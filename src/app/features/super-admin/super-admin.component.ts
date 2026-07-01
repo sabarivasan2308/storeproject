@@ -158,7 +158,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
             <div class="glass-panel filter-bar">
               <div class="filter-group">
                 <label class="form-label">Institution</label>
-                <select class="form-input" [(ngModel)]="filterInstitution">
+                <select class="form-input" [ngModel]="filterInstitution()" (ngModelChange)="filterInstitution.set($event)">
                   <option value="All">All Institutions</option>
                   @for (inst of institutionList; track inst) {
                     <option [value]="inst">{{ inst }}</option>
@@ -167,7 +167,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
               </div>
               <div class="filter-group">
                 <label class="form-label">Category</label>
-                <select class="form-input" [(ngModel)]="filterCategory">
+                <select class="form-input" [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set($event)">
                   <option value="All">All Categories</option>
                   @for (cat of categoryList(); track cat) {
                     <option [value]="cat">{{ cat }}</option>
@@ -176,7 +176,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
               </div>
               <div class="filter-group">
                 <label class="form-label">Status</label>
-                <select class="form-input" [(ngModel)]="filterStatus">
+                <select class="form-input" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)">
                   <option value="All">All Statuses</option>
                   <option value="Active">Active</option>
                   <option value="Damaged">Damaged</option>
@@ -1037,9 +1037,9 @@ export class SuperAdminComponent implements OnInit {
   isMockActive = signal<boolean>(true);
 
   // Filters State
-  filterInstitution = 'All';
-  filterCategory = 'All';
-  filterStatus = 'All';
+  filterInstitution = signal<string>('All');
+  filterCategory = signal<string>('All');
+  filterStatus = signal<string>('All');
 
   // Institution List constant
   institutionList = ['KARE', 'LINGA Global School', 'AK B.Ed College', 'AKCP', 'AKCAS', 'KMCH'];
@@ -1140,9 +1140,9 @@ export class SuperAdminComponent implements OnInit {
   // Filtering Logic
   filteredAssets = computed(() => {
     return this.assets().filter(a => {
-      const matchInst = this.filterInstitution === 'All' || a.locationText?.startsWith(this.filterInstitution);
-      const matchCat = this.filterCategory === 'All' || a.category === this.filterCategory;
-      const matchStatus = this.filterStatus === 'All' || a.status === this.filterStatus;
+      const matchInst = this.filterInstitution() === 'All' || a.locationText?.startsWith(this.filterInstitution());
+      const matchCat = this.filterCategory() === 'All' || a.category === this.filterCategory();
+      const matchStatus = this.filterStatus() === 'All' || a.status === this.filterStatus();
       return matchInst && matchCat && matchStatus;
     });
   });
@@ -1252,9 +1252,9 @@ export class SuperAdminComponent implements OnInit {
   }
 
   viewContainer(containerId: string) {
-    this.filterInstitution = 'All';
-    this.filterCategory = 'All';
-    this.filterStatus = 'All';
+    this.filterInstitution.set('All');
+    this.filterCategory.set('All');
+    this.filterStatus.set('All');
     this.activeTab.set('assets');
     
     // Quick search trick, filter by container

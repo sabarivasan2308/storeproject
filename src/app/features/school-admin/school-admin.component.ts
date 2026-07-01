@@ -147,7 +147,7 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
             <div class="glass-panel filter-bar">
               <div class="filter-group">
                 <label class="form-label">Category</label>
-                <select class="form-input" [(ngModel)]="filterCategory">
+                <select class="form-input" [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set($event)">
                   <option value="All">All Categories</option>
                   @for (cat of categoryList(); track cat) {
                     <option [value]="cat">{{ cat }}</option>
@@ -156,7 +156,7 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
               </div>
               <div class="filter-group">
                 <label class="form-label">Status</label>
-                <select class="form-input" [(ngModel)]="filterStatus">
+                <select class="form-input" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)">
                   <option value="All">All Statuses</option>
                   <option value="Active">Active</option>
                   <option value="Damaged">Damaged</option>
@@ -995,8 +995,8 @@ export class SchoolAdminComponent implements OnInit {
   isMockActive = signal<boolean>(true);
 
   // Filters State
-  filterCategory = 'All';
-  filterStatus = 'All';
+  filterCategory = signal<string>('All');
+  filterStatus = signal<string>('All');
 
   // Audit State
   selectedAuditLocationId = '';
@@ -1108,8 +1108,8 @@ export class SchoolAdminComponent implements OnInit {
 
   filteredAssets = computed(() => {
     return this.assets().filter(a => {
-      const matchCat = this.filterCategory === 'All' || a.category === this.filterCategory;
-      const matchStatus = this.filterStatus === 'All' || a.status === this.filterStatus;
+      const matchCat = this.filterCategory() === 'All' || a.category === this.filterCategory();
+      const matchStatus = this.filterStatus() === 'All' || a.status === this.filterStatus();
       return matchCat && matchStatus;
     });
   });
