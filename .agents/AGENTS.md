@@ -13,3 +13,13 @@ The following project-scoped guidelines have been provided by the user and must 
 * **No Destructive Actions**: Avoid destructive commands such as `rm -rf`, force pushes, history rewrites, or deleting files unless explicitly requested by the user.
 * **Continuous Execution**: Continue automatically after each successful step and only stop if you encounter an error that requires user input.
 * **Repository Assumption**: Assume this GitHub repository is already configured and connected correctly unless Git reports otherwise.
+* **Pre-Planning**: Plan the complete solution before making changes.
+* **Auto-Execution**: Execute all safe, non-destructive actions automatically.
+* **Non-Stop Progress**: Continue until the task is fully complete without stopping for intermediate confirmations.
+* **Interrupt Rules**: Only interrupt the user if authentication is required, a destructive/irreversible action is needed, or an unresolvable error is encountered.
+* **Descriptive Summaries**: After completing each task, provide a concise summary covering:
+  - Files changed
+  - Commands executed
+  - Git commits created
+  - Pushed status
+  - Remaining issues or recommendations.
