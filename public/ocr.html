@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF OCR Utility</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            margin: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 400px;
+            background-color: #2d2d2d;
+            color: #ffffff;
+            font-family: monospace;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #7c4dff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #651fff;
+        }
+        #status {
+            font-weight: bold;
+            margin: 10px 0;
+            color: #00e5ff;
+        }
+    </style>
+</head>
+<body>
+    <h1>KARE Stock Verification PDF OCR Tool</h1>
+    <button id="start-btn">Start OCR</button>
+    <div id="status">Ready. Click Start to begin.</div>
+    <textarea id="output" readonly placeholder="Extracted text will appear here..."></textarea>
+    <canvas id="pdf-canvas" style="display:none;"></canvas>
+
+    <script>
+        // Set up pdf.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        const startBtn = document.getElementById('start-btn');
+        const statusDiv = document.getElementById('status');
+        const outputArea = document.getElementById('output');
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+
+        startBtn.addEventListener('click', async () => {
+            startBtn.disabled = true;
+            statusDiv.textContent = 'Loading PDF...';
+            outputArea.value = '';
+
+            try {
+                // Fetch and load PDF
+                const pdfUrl = '/stock verification report-CSHM.pdf';
+                const loadingTask = pdfjsLib.getDocument(pdfUrl);
+                const pdf = await loadingTask.promise;
+                const totalPages = pdf.numPages;
+                statusDiv.textContent = `PDF Loaded. Total pages: ${totalPages}. Starting OCR...`;
+
+                // Initialize Tesseract worker
+                const worker = await Tesseract.createWorker('eng');
+
+                for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                    statusDiv.textContent = `Processing Page ${pageNum} of ${totalPages} (Rendering)...`;
+                    
+                    // Render page to canvas
+                    const page = await pdf.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: 2.0 }); // High scale for better OCR accuracy
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+
+                    const renderContext = {
+                        canvasContext: ctx,
+                        viewport: viewport
+                    };
+                    await page.render(renderContext).promise;
+
+                    statusDiv.textContent = `Processing Page ${pageNum} of ${totalPages} (OCR in progress)...`;
+                    
+                    // Run OCR
+                    const { data: { text } } = await worker.recognize(canvas);
+                    
+                    // Append text
+                    outputArea.value += `\n\n--- PAGE ${pageNum} ---\n\n` + text;
+                    outputArea.scrollTop = outputArea.scrollHeight;
+                    
+                    console.log(`Page ${pageNum} done.`);
+                }
+
+                await worker.terminate();
+                statusDiv.textContent = 'OCR completed successfully!';
+                
+                // Add a hidden element to signify completion for the subagent
+                const doneIndicator = document.createElement('div');
+                doneIndicator.id = 'ocr-done-indicator';
+                doneIndicator.style.display = 'none';
+                document.body.appendChild(doneIndicator);
+
+            } catch (err) {
+                console.error(err);
+                statusDiv.textContent = 'Error: ' + err.message;
+                startBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
