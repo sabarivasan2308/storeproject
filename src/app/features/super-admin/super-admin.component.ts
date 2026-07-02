@@ -90,10 +90,10 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                 </div>
               </div>
               <div class="glass-panel kpi-card">
-                <div class="kpi-icon-container">⚠️</div>
+                <div class="kpi-icon-container">🔧</div>
                 <div class="kpi-data">
-                  <span class="kpi-label">Damaged Assets</span>
-                  <span class="kpi-value text-red">{{ damagedAssetsCount() }}</span>
+                  <span class="kpi-label">Under Service</span>
+                  <span class="kpi-value text-cyan">{{ underServiceCount() }}</span>
                 </div>
               </div>
               <div class="glass-panel kpi-card">
@@ -101,6 +101,20 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                 <div class="kpi-data">
                   <span class="kpi-label">Missing Assets</span>
                   <span class="kpi-value text-orange">{{ missingAssetsCount() }}</span>
+                </div>
+              </div>
+              <div class="glass-panel kpi-card">
+                <div class="kpi-icon-container">💤</div>
+                <div class="kpi-data">
+                  <span class="kpi-label">Idle Assets</span>
+                  <span class="kpi-value text-blue">{{ idleAssetsCount() }}</span>
+                </div>
+              </div>
+              <div class="glass-panel kpi-card">
+                <div class="kpi-icon-container">❌</div>
+                <div class="kpi-data">
+                  <span class="kpi-label">Condemned</span>
+                  <span class="kpi-value text-red">{{ condemnedAssetsCount() }}</span>
                 </div>
               </div>
             </div>
@@ -115,8 +129,9 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                       <th>Institution Name</th>
                       <th>Assets Count</th>
                       <th>Total Value</th>
-                      <th>Damaged Items</th>
+                      <th>Under Service</th>
                       <th>Missing Items</th>
+                      <th>Condemned</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -126,13 +141,18 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                         <td>{{ inst.count }}</td>
                         <td>₹{{ inst.value | number }}</td>
                         <td>
-                          <span class="badge" [class.badge-red]="inst.damaged > 0" [class.badge-green]="inst.damaged === 0">
-                            {{ inst.damaged }}
+                          <span class="badge" [class.badge-blue]="inst.underService > 0" [class.badge-green]="inst.underService === 0">
+                            {{ inst.underService }}
                           </span>
                         </td>
                         <td>
                           <span class="badge" [class.badge-orange]="inst.missing > 0" [class.badge-green]="inst.missing === 0">
                             {{ inst.missing }}
+                          </span>
+                        </td>
+                        <td>
+                          <span class="badge" [class.badge-red]="inst.condemned > 0" [class.badge-green]="inst.condemned === 0">
+                            {{ inst.condemned }}
                           </span>
                         </td>
                       </tr>
@@ -155,8 +175,12 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
             </div>
 
             <!-- Filter Bar -->
-            <div class="glass-panel filter-bar">
-              <div class="filter-group">
+            <div class="glass-panel filter-bar" style="flex-wrap: wrap;">
+              <div class="filter-group" style="min-width: 180px;">
+                <label class="form-label">Search Name / ID</label>
+                <input type="text" class="form-input" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" placeholder="Search name, ID..." />
+              </div>
+              <div class="filter-group" style="min-width: 180px;">
                 <label class="form-label">Institution</label>
                 <select class="form-input" [ngModel]="filterInstitution()" (ngModelChange)="filterInstitution.set($event)">
                   <option value="All">All Institutions</option>
@@ -165,7 +189,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                   }
                 </select>
               </div>
-              <div class="filter-group">
+              <div class="filter-group" style="min-width: 180px;">
                 <label class="form-label">Category</label>
                 <select class="form-input" [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set($event)">
                   <option value="All">All Categories</option>
@@ -174,14 +198,25 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                   }
                 </select>
               </div>
-              <div class="filter-group">
+              <div class="filter-group" style="min-width: 180px;">
                 <label class="form-label">Status</label>
                 <select class="form-input" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)">
                   <option value="All">All Statuses</option>
+                  <option value="Idle">Idle</option>
                   <option value="Active">Active</option>
-                  <option value="Damaged">Damaged</option>
+                  <option value="Under Service">Under Service</option>
+                  <option value="Transferred">Transferred</option>
                   <option value="Missing">Missing</option>
+                  <option value="Condemned">Condemned</option>
                 </select>
+              </div>
+              <div class="filter-group" style="min-width: 150px;">
+                <label class="form-label">Purchase Order</label>
+                <input type="text" class="form-input" [ngModel]="filterPO()" (ngModelChange)="filterPO.set($event)" placeholder="PO number..." />
+              </div>
+              <div class="filter-group" style="min-width: 150px;">
+                <label class="form-label">Bill Number</label>
+                <input type="text" class="form-input" [ngModel]="filterBillNumber()" (ngModelChange)="filterBillNumber.set($event)" placeholder="Bill number..." />
               </div>
             </div>
 
@@ -228,11 +263,23 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                         <td>
                           <span class="badge" 
                             [class.badge-green]="asset.status === 'Active'" 
-                            [class.badge-red]="asset.status === 'Damaged'"
+                            [class.badge-red]="asset.status === 'Condemned'"
                             [class.badge-orange]="asset.status === 'Missing'"
+                            [class.badge-blue]="asset.status === 'Under Service' || asset.status === 'Transferred'"
+                            [class.badge-gray]="asset.status === 'Idle'"
                           >
                             {{ asset.status }}
                           </span>
+                          @if (asset.purchaseOrder || asset.billNumber) {
+                            <div class="purchase-meta-row" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                              @if (asset.purchaseOrder) {
+                                <span>PO: <code>{{ asset.purchaseOrder }}</code></span>
+                              }
+                              @if (asset.billNumber) {
+                                <span style="margin-left: 8px;">Bill: <code>{{ asset.billNumber }}</code></span>
+                              }
+                            </div>
+                          }
                         </td>
                         <td>
                           <img 
@@ -298,10 +345,11 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                         <td>
                           <span class="badge"
                             [class.badge-purple]="req.changeType === 'Quantity Update'"
-                            [class.badge-red]="req.changeType === 'Mark Damaged'"
-                            [class.badge-orange]="req.changeType === 'Mark Missing'"
+                            [class.badge-red]="req.changeType.startsWith('Mark Damaged') || req.changeType.startsWith('Mark Condemned')"
+                            [class.badge-orange]="req.changeType.startsWith('Mark Missing')"
                             [class.badge-cyan]="req.changeType === 'Add Asset'"
-                            [class.badge-green]="req.changeType === 'Mark Active'"
+                            [class.badge-green]="req.changeType.startsWith('Mark Active')"
+                            [class.badge-blue]="req.changeType.startsWith('Mark Under Service') || req.changeType.startsWith('Mark Transferred') || req.changeType.startsWith('Mark Idle')"
                           >
                             {{ req.changeType }}
                           </span>
@@ -387,7 +435,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                 <label class="form-label">Report Type</label>
                 <select class="form-input" [(ngModel)]="reportType">
                   <option value="summary">Institution-wise Inventory Summary</option>
-                  <option value="damaged">Damaged Assets Report</option>
+                  <option value="damaged">Service & Condemned Assets Report</option>
                   <option value="missing">Missing Assets Report</option>
                   <option value="all">Full Inventory Audit Details</option>
                 </select>
@@ -413,8 +461,9 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                         <th>Institution Name</th>
                         <th>Total Assets</th>
                         <th>Total Inventory Value</th>
-                        <th>Damaged Items</th>
+                        <th>Under Service</th>
                         <th>Missing Items</th>
+                        <th>Condemned</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -423,8 +472,9 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                           <td><strong>{{ inst.name }}</strong></td>
                           <td>{{ inst.count }}</td>
                           <td>₹{{ inst.value | number }}</td>
-                          <td>{{ inst.damaged }}</td>
+                          <td>{{ inst.underService }}</td>
                           <td>{{ inst.missing }}</td>
+                          <td>{{ inst.condemned }}</td>
                         </tr>
                       }
                     </tbody>
@@ -446,7 +496,14 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                       @for (asset of reportAssets(); track asset.id) {
                         <tr>
                           <td><code>{{ asset.id }}</code></td>
-                          <td>{{ asset.name }}</td>
+                          <td>
+                            {{ asset.name }}
+                            @if (asset.purchaseOrder || asset.billNumber) {
+                              <div style="font-size: 0.75rem; color: #64748b;">
+                                PO: {{ asset.purchaseOrder || '-' }} | Bill: {{ asset.billNumber || '-' }} ({{ asset.billDate || '-' }})
+                              </div>
+                            }
+                          </td>
                           <td>{{ asset.locationText?.split(' -> ')?.shift() }}</td>
                           <td>{{ asset.category }}</td>
                           <td>{{ asset.brand }}/{{ asset.model }}</td>
@@ -478,7 +535,14 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                       @for (asset of assets(); track asset.id) {
                         <tr>
                           <td><code>{{ asset.id }}</code></td>
-                          <td>{{ asset.name }}</td>
+                          <td>
+                            {{ asset.name }}
+                            @if (asset.purchaseOrder || asset.billNumber) {
+                              <div style="font-size: 0.75rem; color: #64748b;">
+                                PO: {{ asset.purchaseOrder || '-' }} | Bill: {{ asset.billNumber || '-' }} ({{ asset.billDate || '-' }})
+                              </div>
+                            }
+                          </td>
                           <td>{{ asset.locationText?.split(' -> ')?.shift() }}</td>
                           <td>{{ asset.category }}</td>
                           <td>{{ asset.quantity }}</td>
@@ -531,9 +595,12 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
               <div class="form-group">
                 <label class="form-label">Status</label>
                 <select class="form-input" [(ngModel)]="editingAsset.status" name="status" required>
+                  <option value="Idle">Idle</option>
                   <option value="Active">Active</option>
-                  <option value="Damaged">Damaged</option>
+                  <option value="Under Service">Under Service</option>
+                  <option value="Transferred">Transferred</option>
                   <option value="Missing">Missing</option>
+                  <option value="Condemned">Condemned</option>
                 </select>
               </div>
             </div>
@@ -587,6 +654,28 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
             <div class="form-group flex-row">
               <input type="checkbox" id="isContainer" [(ngModel)]="editingAsset.isContainer" name="isContainer" />
               <label for="isContainer" class="form-label pointer-label">Acts as a Container (Can hold other assets)</label>
+            </div>
+
+            <div class="form-row-grid">
+              <div class="form-group">
+                <label class="form-label">Purchase Date</label>
+                <input type="date" class="form-input" [(ngModel)]="editingAsset.purchaseDate" name="purchaseDate" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Purchase Order (Alphanumeric)</label>
+                <input type="text" class="form-input" [(ngModel)]="editingAsset.purchaseOrder" name="purchaseOrder" placeholder="PO-12345" />
+              </div>
+            </div>
+
+            <div class="form-row-grid">
+              <div class="form-group">
+                <label class="form-label">Bill Number (Alphanumeric)</label>
+                <input type="text" class="form-input" [(ngModel)]="editingAsset.billNumber" name="billNumber" placeholder="BILL-9876" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Bill Date</label>
+                <input type="date" class="form-input" [(ngModel)]="editingAsset.billDate" name="billDate" />
+              </div>
             </div>
 
             <div class="form-group">
@@ -1040,6 +1129,9 @@ export class SuperAdminComponent implements OnInit {
   filterInstitution = signal<string>('All');
   filterCategory = signal<string>('All');
   filterStatus = signal<string>('All');
+  searchQuery = signal<string>('');
+  filterPO = signal<string>('');
+  filterBillNumber = signal<string>('');
 
   // Institution List constant
   institutionList = ['KARE', 'LINGA Global School', 'AK B.Ed College', 'AKCP', 'AKCAS', 'KMCH'];
@@ -1063,7 +1155,7 @@ export class SuperAdminComponent implements OnInit {
   reportTitle = computed(() => {
     switch (this.reportType) {
       case 'summary': return 'Institution-wise Inventory Summary Report';
-      case 'damaged': return 'Damaged Assets Integrity Audit';
+      case 'damaged': return 'Service & Condemned Assets Integrity Audit';
       case 'missing': return 'Missing Assets Investigation Report';
       default: return 'Full Inventory Audit Details Report';
     }
@@ -1113,8 +1205,10 @@ export class SuperAdminComponent implements OnInit {
   uniqueInstitutionsCount = () => this.institutionList.length;
   totalAssetsCount = computed(() => this.assets().reduce((acc, a) => acc + a.quantity, 0));
   totalAssetValue = computed(() => this.assets().reduce((acc, a) => acc + a.totalPrice, 0));
-  damagedAssetsCount = computed(() => this.assets().filter(a => a.status === 'Damaged').reduce((acc, a) => acc + a.quantity, 0));
+  idleAssetsCount = computed(() => this.assets().filter(a => a.status === 'Idle').reduce((acc, a) => acc + a.quantity, 0));
+  underServiceCount = computed(() => this.assets().filter(a => a.status === 'Under Service').reduce((acc, a) => acc + a.quantity, 0));
   missingAssetsCount = computed(() => this.assets().filter(a => a.status === 'Missing').reduce((acc, a) => acc + a.quantity, 0));
+  condemnedAssetsCount = computed(() => this.assets().filter(a => a.status === 'Condemned').reduce((acc, a) => acc + a.quantity, 0));
   pendingRequestsCount = computed(() => this.requests().filter(r => r.status === 'Pending').length);
 
   institutionSummaries = computed(() => {
@@ -1124,8 +1218,9 @@ export class SuperAdminComponent implements OnInit {
         name: instName,
         count: instAssets.reduce((acc, a) => acc + a.quantity, 0),
         value: instAssets.reduce((acc, a) => acc + a.totalPrice, 0),
-        damaged: instAssets.filter(a => a.status === 'Damaged').reduce((acc, a) => acc + a.quantity, 0),
-        missing: instAssets.filter(a => a.status === 'Missing').reduce((acc, a) => acc + a.quantity, 0)
+        underService: instAssets.filter(a => a.status === 'Under Service').reduce((acc, a) => acc + a.quantity, 0),
+        missing: instAssets.filter(a => a.status === 'Missing').reduce((acc, a) => acc + a.quantity, 0),
+        condemned: instAssets.filter(a => a.status === 'Condemned').reduce((acc, a) => acc + a.quantity, 0)
       };
     });
   });
@@ -1140,16 +1235,21 @@ export class SuperAdminComponent implements OnInit {
   // Filtering Logic
   filteredAssets = computed(() => {
     return this.assets().filter(a => {
+      const matchSearch = this.searchQuery() === '' || 
+        a.name.toLowerCase().includes(this.searchQuery().toLowerCase()) || 
+        a.id.toLowerCase().includes(this.searchQuery().toLowerCase());
       const matchInst = this.filterInstitution() === 'All' || a.locationText?.startsWith(this.filterInstitution());
       const matchCat = this.filterCategory() === 'All' || a.category === this.filterCategory();
       const matchStatus = this.filterStatus() === 'All' || a.status === this.filterStatus();
-      return matchInst && matchCat && matchStatus;
+      const matchPO = this.filterPO() === '' || (a.purchaseOrder || '').toLowerCase().includes(this.filterPO().toLowerCase());
+      const matchBill = this.filterBillNumber() === '' || (a.billNumber || '').toLowerCase().includes(this.filterBillNumber().toLowerCase());
+      return matchSearch && matchInst && matchCat && matchStatus && matchPO && matchBill;
     });
   });
 
   reportAssets = computed(() => {
     if (this.reportType === 'damaged') {
-      return this.assets().filter(a => a.status === 'Damaged');
+      return this.assets().filter(a => a.status === 'Under Service' || a.status === 'Condemned');
     }
     if (this.reportType === 'missing') {
       return this.assets().filter(a => a.status === 'Missing');
@@ -1181,6 +1281,9 @@ export class SuperAdminComponent implements OnInit {
       unitPrice: 0,
       totalPrice: 0,
       purchaseDate: new Date().toISOString().substring(0, 10),
+      purchaseOrder: '',
+      billNumber: '',
+      billDate: '',
       vendor: '',
       warrantyDetails: '',
       status: 'Active',
@@ -1193,7 +1296,12 @@ export class SuperAdminComponent implements OnInit {
 
   openEditAssetModal(asset: Asset) {
     this.isEditingAsset.set(true);
-    this.editingAsset = { ...asset };
+    this.editingAsset = { 
+      ...asset,
+      purchaseOrder: asset.purchaseOrder || '',
+      billNumber: asset.billNumber || '',
+      billDate: asset.billDate || ''
+    };
     this.showAssetModal.set(true);
   }
 
@@ -1202,6 +1310,34 @@ export class SuperAdminComponent implements OnInit {
   }
 
   async saveAsset() {
+    // Alphanumeric validation
+    const alphaNumRegex = /^[a-zA-Z0-9]*$/;
+    if (this.editingAsset.purchaseOrder && !alphaNumRegex.test(this.editingAsset.purchaseOrder)) {
+      alert('Purchase Order must be alphanumeric (only letters and numbers allowed).');
+      return;
+    }
+    if (this.editingAsset.billNumber && !alphaNumRegex.test(this.editingAsset.billNumber)) {
+      alert('Bill Number must be alphanumeric (only letters and numbers allowed).');
+      return;
+    }
+
+    // Date validations
+    const today = new Date().toISOString().substring(0, 10);
+    if (this.editingAsset.purchaseDate && this.editingAsset.purchaseDate > today) {
+      alert('Purchase Date cannot be in the future.');
+      return;
+    }
+    if (this.editingAsset.billDate) {
+      if (this.editingAsset.billDate > today) {
+        alert('Bill Date cannot be in the future.');
+        return;
+      }
+      if (this.editingAsset.purchaseDate && this.editingAsset.billDate < this.editingAsset.purchaseDate) {
+        alert('Bill Date cannot be earlier than Purchase Date.');
+        return;
+      }
+    }
+
     this.editingAsset.totalPrice = this.editingAsset.quantity * this.editingAsset.unitPrice;
     this.editingAsset.qrCode = this.editingAsset.id;
     if (!this.editingAsset.barcode) {

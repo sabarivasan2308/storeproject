@@ -333,6 +333,9 @@ export class AppwriteService {
                   unitPrice: d['unitPrice'],
                   totalPrice: d['totalPrice'],
                   purchaseDate: d['purchaseDate'] || '',
+                  purchaseOrder: d['purchaseOrder'] || '',
+                  billNumber: d['billNumber'] || '',
+                  billDate: d['billDate'] || '',
                   vendor: d['vendor'] || '',
                   warrantyDetails: d['warrantyDetails'] || '',
                   status: d['status'],
@@ -392,6 +395,9 @@ export class AppwriteService {
         unitPrice: asset.unitPrice,
         totalPrice: asset.totalPrice,
         purchaseDate: asset.purchaseDate || '',
+        purchaseOrder: asset.purchaseOrder || '',
+        billNumber: asset.billNumber || '',
+        billDate: asset.billDate || '',
         vendor: asset.vendor || '',
         warrantyDetails: asset.warrantyDetails || '',
         status: asset.status,
@@ -455,6 +461,9 @@ export class AppwriteService {
         unitPrice: asset.unitPrice,
         totalPrice: asset.totalPrice,
         purchaseDate: asset.purchaseDate || '',
+        purchaseOrder: asset.purchaseOrder || '',
+        billNumber: asset.billNumber || '',
+        billDate: asset.billDate || '',
         vendor: asset.vendor || '',
         warrantyDetails: asset.warrantyDetails || '',
         status: asset.status,
@@ -566,6 +575,9 @@ export class AppwriteService {
               unitPrice: d['unitPrice'],
               totalPrice: d['totalPrice'],
               purchaseDate: d['purchaseDate'] || '',
+              purchaseOrder: d['purchaseOrder'] || '',
+              billNumber: d['billNumber'] || '',
+              billDate: d['billDate'] || '',
               vendor: d['vendor'] || '',
               warrantyDetails: d['warrantyDetails'] || '',
               status: d['status'],
@@ -723,12 +735,8 @@ export class AppwriteService {
                 asset.quantity = qtyNum;
                 asset.totalPrice = asset.quantity * asset.unitPrice;
               }
-            } else if (req.changeType === 'Mark Damaged') {
-              asset.status = 'Damaged';
-            } else if (req.changeType === 'Mark Missing') {
-              asset.status = 'Missing';
-            } else if (req.changeType === 'Mark Active') {
-              asset.status = 'Active';
+            } else if (req.changeType.startsWith('Mark ')) {
+              asset.status = req.changeType.substring(5) as any;
             } else if (req.changeType === 'Add Asset') {
               asset.status = 'Active';
               asset.remarks = asset.remarks.replace('Approval Pending.', 'Approved.');
@@ -815,12 +823,8 @@ export class AppwriteService {
                 updatedAsset.quantity = qtyNum;
                 updatedAsset.totalPrice = updatedAsset.quantity * updatedAsset.unitPrice;
               }
-            } else if (changeType === 'Mark Damaged') {
-              updatedAsset.status = 'Damaged';
-            } else if (changeType === 'Mark Missing') {
-              updatedAsset.status = 'Missing';
-            } else if (changeType === 'Mark Active') {
-              updatedAsset.status = 'Active';
+            } else if (changeType.startsWith('Mark ')) {
+              updatedAsset.status = changeType.substring(5);
             } else if (changeType === 'Add Asset') {
               updatedAsset.status = 'Active';
               updatedAsset.remarks = (updatedAsset.remarks || '').replace('Approval Pending.', 'Approved.');

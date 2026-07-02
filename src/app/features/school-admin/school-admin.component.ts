@@ -85,8 +85,8 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
               <div class="glass-panel kpi-card">
                 <div class="kpi-icon-container">⚠️</div>
                 <div class="kpi-data">
-                  <span class="kpi-label">Damaged Assets</span>
-                  <span class="kpi-value text-red">{{ damagedAssetsCount() }}</span>
+                  <span class="kpi-label">Under Service</span>
+                  <span class="kpi-value text-cyan">{{ underServiceCount() }}</span>
                 </div>
               </div>
               <div class="glass-panel kpi-card">
@@ -94,6 +94,20 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                 <div class="kpi-data">
                   <span class="kpi-label">Missing Assets</span>
                   <span class="kpi-value text-orange">{{ missingAssetsCount() }}</span>
+                </div>
+              </div>
+              <div class="glass-panel kpi-card">
+                <div class="kpi-icon-container">💤</div>
+                <div class="kpi-data">
+                  <span class="kpi-label">Idle Assets</span>
+                  <span class="kpi-value text-blue">{{ idleAssetsCount() }}</span>
+                </div>
+              </div>
+              <div class="glass-panel kpi-card">
+                <div class="kpi-icon-container">❌</div>
+                <div class="kpi-data">
+                  <span class="kpi-label">Condemned</span>
+                  <span class="kpi-value text-red">{{ condemnedAssetsCount() }}</span>
                 </div>
               </div>
             </div>
@@ -144,8 +158,12 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
             </div>
 
             <!-- Category Filter Bar -->
-            <div class="glass-panel filter-bar">
-              <div class="filter-group">
+            <div class="glass-panel filter-bar" style="flex-wrap: wrap;">
+              <div class="filter-group" style="min-width: 180px;">
+                <label class="form-label">Search Name / ID</label>
+                <input type="text" class="form-input" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" placeholder="Search name, ID..." />
+              </div>
+              <div class="filter-group" style="min-width: 180px;">
                 <label class="form-label">Category</label>
                 <select class="form-input" [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set($event)">
                   <option value="All">All Categories</option>
@@ -154,14 +172,25 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                   }
                 </select>
               </div>
-              <div class="filter-group">
+              <div class="filter-group" style="min-width: 180px;">
                 <label class="form-label">Status</label>
                 <select class="form-input" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)">
                   <option value="All">All Statuses</option>
+                  <option value="Idle">Idle</option>
                   <option value="Active">Active</option>
-                  <option value="Damaged">Damaged</option>
+                  <option value="Under Service">Under Service</option>
+                  <option value="Transferred">Transferred</option>
                   <option value="Missing">Missing</option>
+                  <option value="Condemned">Condemned</option>
                 </select>
+              </div>
+              <div class="filter-group" style="min-width: 150px;">
+                <label class="form-label">Purchase Order</label>
+                <input type="text" class="form-input" [ngModel]="filterPO()" (ngModelChange)="filterPO.set($event)" placeholder="PO number..." />
+              </div>
+              <div class="filter-group" style="min-width: 150px;">
+                <label class="form-label">Bill Number</label>
+                <input type="text" class="form-input" [ngModel]="filterBillNumber()" (ngModelChange)="filterBillNumber.set($event)" placeholder="Bill number..." />
               </div>
             </div>
 
@@ -208,11 +237,23 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                         <td>
                           <span class="badge" 
                             [class.badge-green]="asset.status === 'Active'" 
-                            [class.badge-red]="asset.status === 'Damaged'"
+                            [class.badge-red]="asset.status === 'Condemned'"
                             [class.badge-orange]="asset.status === 'Missing'"
+                            [class.badge-blue]="asset.status === 'Under Service' || asset.status === 'Transferred'"
+                            [class.badge-gray]="asset.status === 'Idle'"
                           >
                             {{ asset.status }}
                           </span>
+                          @if (asset.purchaseOrder || asset.billNumber) {
+                            <div class="purchase-meta-row" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                              @if (asset.purchaseOrder) {
+                                <span>PO: <code>{{ asset.purchaseOrder }}</code></span>
+                              }
+                              @if (asset.billNumber) {
+                                <span style="margin-left: 8px;">Bill: <code>{{ asset.billNumber }}</code></span>
+                              }
+                            </div>
+                          }
                         </td>
                         <td>
                           <img 
@@ -226,7 +267,7 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                           <div class="action-buttons">
                             <!-- Change requires request to Super Admin -->
                             <button class="btn btn-secondary btn-icon" (click)="openRequestModal(asset, 'Quantity Update')" title="Update Stock">🔢</button>
-                            <button class="btn btn-danger btn-icon" (click)="openRequestModal(asset, 'Mark Damaged')" title="Report Damage">⚠️</button>
+                            <button class="btn btn-secondary btn-icon" (click)="openRequestModal(asset, 'Status Update')" title="Update Status">⚙️</button>
                           </div>
                         </td>
                       </tr>
@@ -295,9 +336,12 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                           </td>
                           <td>
                             <select class="form-input select-status" [(ngModel)]="item.status">
+                              <option value="Idle">Idle</option>
                               <option value="Active">Active</option>
-                              <option value="Damaged">Damaged</option>
+                              <option value="Under Service">Under Service</option>
+                              <option value="Transferred">Transferred</option>
                               <option value="Missing">Missing</option>
+                              <option value="Condemned">Condemned</option>
                             </select>
                           </td>
                           <td>
@@ -399,7 +443,7 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                 <label class="form-label">Report Type</label>
                 <select class="form-input" [(ngModel)]="reportType">
                   <option value="summary">Full Inventory Details</option>
-                  <option value="damaged">Damaged Assets list</option>
+                  <option value="damaged">Service & Condemned list</option>
                   <option value="missing">Missing Assets list</option>
                 </select>
               </div>
@@ -434,7 +478,14 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                     @for (asset of reportAssets(); track asset.id) {
                       <tr>
                         <td><code>{{ asset.id }}</code></td>
-                        <td>{{ asset.name }}</td>
+                        <td>
+                          {{ asset.name }}
+                          @if (asset.purchaseOrder || asset.billNumber) {
+                            <div style="font-size: 0.75rem; color: #64748b;">
+                              PO: {{ asset.purchaseOrder || '-' }} | Bill: {{ asset.billNumber || '-' }} ({{ asset.billDate || '-' }})
+                            </div>
+                          }
+                        </td>
                         <td>{{ asset.category }}</td>
                         <td>{{ asset.brand }} / {{ asset.model }}</td>
                         <td>{{ asset.quantity }}</td>
@@ -486,10 +537,35 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
               <div class="form-group">
                 <label class="form-label">Initial Status</label>
                 <select class="form-input" [(ngModel)]="proposeAsset.status" name="status" required>
+                  <option value="Idle">Idle</option>
                   <option value="Active">Active</option>
-                  <option value="Damaged">Damaged</option>
+                  <option value="Under Service">Under Service</option>
+                  <option value="Transferred">Transferred</option>
                   <option value="Missing">Missing</option>
+                  <option value="Condemned">Condemned</option>
                 </select>
+              </div>
+            </div>
+
+            <div class="form-row-grid">
+              <div class="form-group">
+                <label class="form-label">Purchase Date</label>
+                <input type="date" class="form-input" [(ngModel)]="proposeAsset.purchaseDate" name="purchaseDate" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Purchase Order (Alphanumeric)</label>
+                <input type="text" class="form-input" [(ngModel)]="proposeAsset.purchaseOrder" name="purchaseOrder" placeholder="PO-12345" />
+              </div>
+            </div>
+
+            <div class="form-row-grid">
+              <div class="form-group">
+                <label class="form-label">Bill Number (Alphanumeric)</label>
+                <input type="text" class="form-input" [(ngModel)]="proposeAsset.billNumber" name="billNumber" placeholder="BILL-9876" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Bill Date</label>
+                <input type="date" class="form-input" [(ngModel)]="proposeAsset.billDate" name="billDate" />
               </div>
             </div>
 
@@ -572,6 +648,15 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
             <label class="form-label">Proposed New Value</label>
             @if (requestChangeType === 'Quantity Update') {
               <input type="number" class="form-input" [(ngModel)]="requestNewValue" required />
+            } @else if (requestChangeType === 'Status Update') {
+              <select class="form-input" [(ngModel)]="requestNewValue" required>
+                <option value="Idle">Idle</option>
+                <option value="Active">Active</option>
+                <option value="Under Service">Under Service</option>
+                <option value="Transferred">Transferred</option>
+                <option value="Missing">Missing</option>
+                <option value="Condemned">Condemned</option>
+              </select>
             } @else {
               <input type="text" class="form-input" [value]="requestNewValue" disabled />
             }
@@ -997,13 +1082,16 @@ export class SchoolAdminComponent implements OnInit {
   // Filters State
   filterCategory = signal<string>('All');
   filterStatus = signal<string>('All');
+  searchQuery = signal<string>('');
+  filterPO = signal<string>('');
+  filterBillNumber = signal<string>('');
 
   // Audit State
   selectedAuditLocationId = '';
   auditItems: Array<{
     asset: Asset;
     physicalCount: number;
-    status: 'Active' | 'Damaged' | 'Missing';
+    status: 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned';
     reason: string;
   }> = [];
 
@@ -1028,7 +1116,7 @@ export class SchoolAdminComponent implements OnInit {
   reportTitle = computed(() => {
     switch (this.reportType) {
       case 'summary': return 'Comprehensive Campus Inventory Audit';
-      case 'damaged': return 'Damaged Assets List';
+      case 'damaged': return 'Service & Condemned Assets List';
       default: return 'Missing Assets List';
     }
   });
@@ -1078,8 +1166,10 @@ export class SchoolAdminComponent implements OnInit {
   // Dashboard Stats (Institution Specific)
   totalAssetsCount = computed(() => this.assets().reduce((acc, a) => acc + a.quantity, 0));
   totalAssetValue = computed(() => this.assets().reduce((acc, a) => acc + a.totalPrice, 0));
-  damagedAssetsCount = computed(() => this.assets().filter(a => a.status === 'Damaged').reduce((acc, a) => acc + a.quantity, 0));
+  idleAssetsCount = computed(() => this.assets().filter(a => a.status === 'Idle').reduce((acc, a) => acc + a.quantity, 0));
+  underServiceCount = computed(() => this.assets().filter(a => a.status === 'Under Service').reduce((acc, a) => acc + a.quantity, 0));
   missingAssetsCount = computed(() => this.assets().filter(a => a.status === 'Missing').reduce((acc, a) => acc + a.quantity, 0));
+  condemnedAssetsCount = computed(() => this.assets().filter(a => a.status === 'Condemned').reduce((acc, a) => acc + a.quantity, 0));
   pendingRequestsCount = computed(() => this.institutionRequests().filter(r => r.status === 'Pending').length);
 
   institutionLocations = () => this.locations();
@@ -1100,17 +1190,22 @@ export class SchoolAdminComponent implements OnInit {
         name: cat,
         count: catAssets.reduce((acc, a) => acc + a.quantity, 0),
         value: catAssets.reduce((acc, a) => acc + a.totalPrice, 0),
-        active: catAssets.filter(a => a.status === 'Active').reduce((acc, a) => acc + a.quantity, 0),
-        damagedMissing: catAssets.filter(a => a.status === 'Damaged' || a.status === 'Missing').reduce((acc, a) => acc + a.quantity, 0)
+        active: catAssets.filter(a => a.status === 'Active' || a.status === 'Idle').reduce((acc, a) => acc + a.quantity, 0),
+        damagedMissing: catAssets.filter(a => a.status === 'Under Service' || a.status === 'Missing' || a.status === 'Condemned').reduce((acc, a) => acc + a.quantity, 0)
       };
     });
   });
 
   filteredAssets = computed(() => {
     return this.assets().filter(a => {
+      const matchSearch = this.searchQuery() === '' || 
+        a.name.toLowerCase().includes(this.searchQuery().toLowerCase()) || 
+        a.id.toLowerCase().includes(this.searchQuery().toLowerCase());
       const matchCat = this.filterCategory() === 'All' || a.category === this.filterCategory();
       const matchStatus = this.filterStatus() === 'All' || a.status === this.filterStatus();
-      return matchCat && matchStatus;
+      const matchPO = this.filterPO() === '' || (a.purchaseOrder || '').toLowerCase().includes(this.filterPO().toLowerCase());
+      const matchBill = this.filterBillNumber() === '' || (a.billNumber || '').toLowerCase().includes(this.filterBillNumber().toLowerCase());
+      return matchSearch && matchCat && matchStatus && matchPO && matchBill;
     });
   });
 
@@ -1128,7 +1223,7 @@ export class SchoolAdminComponent implements OnInit {
     this.auditItems = locAssets.map(a => ({
       asset: a,
       physicalCount: a.quantity,
-      status: a.status as 'Active' | 'Damaged' | 'Missing',
+      status: a.status as 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned',
       reason: ''
     }));
   }
@@ -1158,21 +1253,13 @@ export class SchoolAdminComponent implements OnInit {
         alert('Reason is required when changing the asset status.');
         return;
       }
-      let type: 'Mark Damaged' | 'Mark Missing' | 'Mark Active';
-      if (item.status === 'Active') {
-        type = 'Mark Active';
-      } else if (item.status === 'Damaged') {
-        type = 'Mark Damaged';
-      } else {
-        type = 'Mark Missing';
-      }
       await this.appwriteService.submitRequest({
         schoolAdminEmail: this.userEmail(),
         schoolAdminName: this.userName(),
         institution: this.institutionName(),
         assetId: item.asset.id,
         assetName: item.asset.name,
-        changeType: type,
+        changeType: `Mark ${item.status}` as any,
         previousValue: item.asset.status,
         newValue: item.status,
         reason: item.reason
@@ -1201,6 +1288,9 @@ export class SchoolAdminComponent implements OnInit {
       unitPrice: 0,
       totalPrice: 0,
       purchaseDate: new Date().toISOString().substring(0, 10),
+      purchaseOrder: '',
+      billNumber: '',
+      billDate: '',
       vendor: '',
       warrantyDetails: '',
       status: 'Active',
@@ -1216,6 +1306,34 @@ export class SchoolAdminComponent implements OnInit {
   }
 
   async submitAddAssetPropose() {
+    // Alphanumeric validation
+    const alphaNumRegex = /^[a-zA-Z0-9]*$/;
+    if (this.proposeAsset.purchaseOrder && !alphaNumRegex.test(this.proposeAsset.purchaseOrder)) {
+      alert('Purchase Order must be alphanumeric (only letters and numbers allowed).');
+      return;
+    }
+    if (this.proposeAsset.billNumber && !alphaNumRegex.test(this.proposeAsset.billNumber)) {
+      alert('Bill Number must be alphanumeric (only letters and numbers allowed).');
+      return;
+    }
+
+    // Date validations
+    const today = new Date().toISOString().substring(0, 10);
+    if (this.proposeAsset.purchaseDate && this.proposeAsset.purchaseDate > today) {
+      alert('Purchase Date cannot be in the future.');
+      return;
+    }
+    if (this.proposeAsset.billDate) {
+      if (this.proposeAsset.billDate > today) {
+        alert('Bill Date cannot be in the future.');
+        return;
+      }
+      if (this.proposeAsset.purchaseDate && this.proposeAsset.billDate < this.proposeAsset.purchaseDate) {
+        alert('Bill Date cannot be earlier than Purchase Date.');
+        return;
+      }
+    }
+
     this.proposeAsset.totalPrice = this.proposeAsset.quantity * this.proposeAsset.unitPrice;
     this.proposeAsset.qrCode = this.proposeAsset.id;
     this.proposeAsset.barcode = 'BAR-' + this.proposeAsset.id;
@@ -1253,7 +1371,7 @@ export class SchoolAdminComponent implements OnInit {
   }
 
   // Request Edit Modal (for quick grid buttons)
-  openRequestModal(asset: Asset, type: 'Quantity Update' | 'Mark Damaged') {
+  openRequestModal(asset: Asset, type: 'Quantity Update' | 'Status Update') {
     this.selectedAsset.set(asset);
     this.requestChangeType = type;
     this.requestReason = '';
@@ -1263,7 +1381,7 @@ export class SchoolAdminComponent implements OnInit {
       this.requestNewValue = asset.quantity.toString();
     } else {
       this.requestPreviousValue = asset.status;
-      this.requestNewValue = 'Damaged';
+      this.requestNewValue = asset.status;
     }
     this.showRequestModal.set(true);
   }
@@ -1277,13 +1395,18 @@ export class SchoolAdminComponent implements OnInit {
     const asset = this.selectedAsset();
     if (!asset) return;
 
+    let finalChangeType = this.requestChangeType;
+    if (this.requestChangeType === 'Status Update') {
+      finalChangeType = `Mark ${this.requestNewValue}`;
+    }
+
     await this.appwriteService.submitRequest({
       schoolAdminEmail: this.userEmail(),
       schoolAdminName: this.userName(),
       institution: this.institutionName(),
       assetId: asset.id,
       assetName: asset.name,
-      changeType: this.requestChangeType as any,
+      changeType: finalChangeType as any,
       previousValue: this.requestPreviousValue,
       newValue: this.requestChangeType === 'Quantity Update' ? `${this.requestNewValue} Units` : this.requestNewValue,
       reason: this.requestReason
@@ -1308,7 +1431,7 @@ export class SchoolAdminComponent implements OnInit {
   // Reporting
   reportAssets = computed(() => {
     if (this.reportType === 'damaged') {
-      return this.assets().filter(a => a.status === 'Damaged');
+      return this.assets().filter(a => a.status === 'Under Service' || a.status === 'Condemned');
     }
     if (this.reportType === 'missing') {
       return this.assets().filter(a => a.status === 'Missing');

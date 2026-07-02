@@ -27,9 +27,12 @@ export interface Asset {
   unitPrice: number;
   totalPrice: number;
   purchaseDate: string;
+  purchaseOrder?: string;
+  billNumber?: string;
+  billDate?: string;
   vendor: string;
   warrantyDetails: string;
-  status: 'Active' | 'Damaged' | 'Missing' | 'Transferred';
+  status: 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned';
   remarks: string;
   locationId: string; // reference to Location
   locationText?: string; // Formatted location text
@@ -44,7 +47,7 @@ export interface VerificationRequest {
   institution: string;
   assetId: string;
   assetName: string;
-  changeType: 'Quantity Update' | 'Mark Damaged' | 'Mark Missing' | 'Add Asset' | 'Mark Active';
+  changeType: 'Quantity Update' | 'Mark Damaged' | 'Mark Missing' | 'Add Asset' | 'Mark Active' | 'Mark Under Service' | 'Mark Condemned' | 'Status Update';
   previousValue: string;
   newValue: string;
   reason: string;
@@ -97,6 +100,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 75000,
     totalPrice: 75000,
     purchaseDate: '2025-01-10',
+    purchaseOrder: 'PO-AKCP-2025-001',
+    billNumber: 'BILL-AKCP-1001',
+    billDate: '2025-01-10',
     vendor: 'BioLabs Equipment Ltd.',
     warrantyDetails: '3 Years Warranty',
     status: 'Active',
@@ -117,6 +123,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 350,
     totalPrice: 42000,
     purchaseDate: '2026-02-15',
+    purchaseOrder: 'PO-AKCP-2026-042',
+    billNumber: 'BILL-AKCP-2098',
+    billDate: '2026-02-15',
     vendor: 'Merck Chemicals',
     warrantyDetails: 'Expiry: 2028-02',
     status: 'Active',
@@ -138,6 +147,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 400,
     totalPrice: 32000,
     purchaseDate: '2026-03-01',
+    purchaseOrder: 'PO-AKCP-2026-045',
+    billNumber: 'BILL-AKCP-2122',
+    billDate: '2026-03-01',
     vendor: 'Sigma Biotech',
     warrantyDetails: 'Expiry: 2027-09',
     status: 'Active',
@@ -159,6 +171,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 1200,
     totalPrice: 60000,
     purchaseDate: '2026-04-10',
+    purchaseOrder: 'PO-AKCP-2026-099',
+    billNumber: 'BILL-AKCP-2349',
+    billDate: '2026-04-10',
     vendor: 'Roche India',
     warrantyDetails: 'Expiry: 2026-12',
     status: 'Active',
@@ -180,6 +195,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 55000,
     totalPrice: 1375000,
     purchaseDate: '2024-11-20',
+    purchaseOrder: 'PO-LINGA-2024-012',
+    billNumber: 'BILL-LINGA-5541',
+    billDate: '2024-11-20',
     vendor: 'HP Retail Plaza',
     warrantyDetails: '5 Years Extended Warranty',
     status: 'Active',
@@ -200,6 +218,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 95000,
     totalPrice: 95000,
     purchaseDate: '2025-05-18',
+    purchaseOrder: 'PO-AKCAS-2025-081',
+    billNumber: 'BILL-AKCAS-9981',
+    billDate: '2025-05-18',
     vendor: 'Epson Projector World',
     warrantyDetails: '2 Years Lamp Warranty',
     status: 'Active',
@@ -220,6 +241,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 48000,
     totalPrice: 96000,
     purchaseDate: '2024-03-12',
+    purchaseOrder: 'PO-KARE-2024-004',
+    billNumber: 'BILL-KARE-0451',
+    billDate: '2024-03-12',
     vendor: 'Daikin Comfort Zone',
     warrantyDetails: '10 Years Compressor Warranty',
     status: 'Active',
@@ -240,6 +264,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 85000,
     totalPrice: 85000,
     purchaseDate: '2023-08-12',
+    purchaseOrder: 'PO-CSHM-2023-098',
+    billNumber: 'BILL-CSHM-9981',
+    billDate: '2023-08-12',
     vendor: 'Samsung Business Solutions',
     warrantyDetails: '5 Years Compressor Warranty',
     status: 'Active',
@@ -260,6 +287,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 2500,
     totalPrice: 2500,
     purchaseDate: '2024-04-10',
+    purchaseOrder: 'PO-CSHM-2024-012',
+    billNumber: 'BILL-CSHM-1124',
+    billDate: '2024-04-10',
     vendor: 'Phillips Home Appliances',
     warrantyDetails: '2 Years Product Warranty',
     status: 'Active',
@@ -281,6 +311,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 18000,
     totalPrice: 18000,
     purchaseDate: '2023-11-05',
+    purchaseOrder: 'PO-CSHM-2023-144',
+    billNumber: 'BILL-CSHM-3312',
+    billDate: '2023-11-05',
     vendor: 'LG Electronics',
     warrantyDetails: '1 Year Product, 5 Years Magnetron Warranty',
     status: 'Active',
@@ -301,6 +334,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 6500,
     totalPrice: 6500,
     purchaseDate: '2024-02-18',
+    purchaseOrder: 'PO-CSHM-2024-002',
+    billNumber: 'BILL-CSHM-1189',
+    billDate: '2024-02-18',
     vendor: 'Preethi Appliances',
     warrantyDetails: '2 Years Warranty',
     status: 'Active',
@@ -321,6 +357,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 35000,
     totalPrice: 35000,
     purchaseDate: '2022-05-20',
+    purchaseOrder: 'PO-CSHM-2022-051',
+    billNumber: 'BILL-CSHM-0982',
+    billDate: '2022-05-20',
     vendor: 'Bajaj Electricals',
     warrantyDetails: '2 Years Warranty',
     status: 'Active',
@@ -341,6 +380,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 120,
     totalPrice: 4320,
     purchaseDate: '2024-10-15',
+    purchaseOrder: 'PO-CSHM-2024-098',
+    billNumber: 'BILL-CSHM-8712',
+    billDate: '2024-10-15',
     vendor: 'Hotelware Traders',
     warrantyDetails: 'N/A',
     status: 'Active',
@@ -361,6 +403,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 12000,
     totalPrice: 24000,
     purchaseDate: '2023-01-22',
+    purchaseOrder: 'PO-CSHM-2023-001',
+    billNumber: 'BILL-CSHM-0051',
+    billDate: '2023-01-22',
     vendor: 'Godrej Retail',
     warrantyDetails: '1 Year Warranty',
     status: 'Active',
@@ -381,9 +426,12 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 150,
     totalPrice: 300,
     purchaseDate: '2015-06-15',
+    purchaseOrder: 'PO-CSHM-2015-010',
+    billNumber: 'BILL-CSHM-2015-010',
+    billDate: '2015-06-15',
     vendor: 'Local Market',
     warrantyDetails: 'N/A',
-    status: 'Damaged',
+    status: 'Condemned',
     remarks: 'Damaged during practical. Recommended for condemnation by Dr. J. Prabhu.',
     locationId: 'LOC-CSHM-001',
     isContainer: false
@@ -401,9 +449,12 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 200,
     totalPrice: 200,
     purchaseDate: '2015-06-15',
+    purchaseOrder: 'PO-CSHM-2015-011',
+    billNumber: 'BILL-CSHM-2015-011',
+    billDate: '2015-06-15',
     vendor: 'Local Market',
     warrantyDetails: 'N/A',
-    status: 'Damaged',
+    status: 'Condemned',
     remarks: 'Damaged during practical. Recommended for condemnation by Dr. J. Prabhu.',
     locationId: 'LOC-CSHM-001',
     isContainer: false
@@ -421,9 +472,12 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 15000,
     totalPrice: 15000,
     purchaseDate: '2015-07-20',
+    purchaseOrder: 'PO-CSHM-2015-020',
+    billNumber: 'BILL-CSHM-2015-020',
+    billDate: '2015-07-20',
     vendor: 'Hobart India',
     warrantyDetails: 'Expired',
-    status: 'Damaged',
+    status: 'Condemned',
     remarks: 'Old and got damaged. Recommended for condemnation by Dr. J. Prabhu.',
     locationId: 'LOC-CSHM-001',
     isContainer: false
@@ -441,9 +495,12 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 12000,
     totalPrice: 12000,
     purchaseDate: '2015-08-10',
+    purchaseOrder: 'PO-CSHM-2015-030',
+    billNumber: 'BILL-CSHM-2015-030',
+    billDate: '2015-08-10',
     vendor: 'Italian Import Co.',
     warrantyDetails: 'Expired',
-    status: 'Damaged',
+    status: 'Condemned',
     remarks: 'Old and got damaged. Recommended for condemnation by Dr. J. Prabhu.',
     locationId: 'LOC-CSHM-001',
     isContainer: false
@@ -461,9 +518,12 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 180,
     totalPrice: 180,
     purchaseDate: '2015-09-05',
+    purchaseOrder: 'PO-CSHM-2015-040',
+    billNumber: 'BILL-CSHM-2015-040',
+    billDate: '2015-09-05',
     vendor: 'Ocean Distributors',
     warrantyDetails: 'N/A',
-    status: 'Damaged',
+    status: 'Condemned',
     remarks: 'Broken during practical. Recommended for condemnation by Dr. S. Senthilkumar.',
     locationId: 'LOC-CSHM-002',
     isContainer: false
@@ -481,9 +541,12 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 150,
     totalPrice: 600,
     purchaseDate: '2015-09-05',
+    purchaseOrder: 'PO-CSHM-2015-041',
+    billNumber: 'BILL-CSHM-2015-041',
+    billDate: '2015-09-05',
     vendor: 'Ocean Distributors',
     warrantyDetails: 'N/A',
-    status: 'Damaged',
+    status: 'Condemned',
     remarks: 'Broken during practical. Recommended for condemnation by Dr. S. Senthilkumar.',
     locationId: 'LOC-CSHM-002',
     isContainer: false
@@ -501,6 +564,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 250,
     totalPrice: 500,
     purchaseDate: '2023-05-14',
+    purchaseOrder: 'PO-CSHM-2023-080',
+    billNumber: 'BILL-CSHM-0870',
+    billDate: '2023-05-14',
     vendor: 'Hotelware Traders',
     warrantyDetails: 'N/A',
     status: 'Missing',
@@ -521,6 +587,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 40,
     totalPrice: 200,
     purchaseDate: '2024-01-10',
+    purchaseOrder: 'PO-CSHM-2024-050',
+    billNumber: 'BILL-CSHM-0520',
+    billDate: '2024-01-10',
     vendor: 'Local Baker Suppliers',
     warrantyDetails: 'N/A',
     status: 'Missing',
@@ -541,6 +610,9 @@ const SEED_ASSETS: Asset[] = [
     unitPrice: 60,
     totalPrice: 300,
     purchaseDate: '2024-01-10',
+    purchaseOrder: 'PO-CSHM-2024-051',
+    billNumber: 'BILL-CSHM-0521',
+    billDate: '2024-01-10',
     vendor: 'Local Baker Suppliers',
     warrantyDetails: 'N/A',
     status: 'Missing',
@@ -548,7 +620,7 @@ const SEED_ASSETS: Asset[] = [
     locationId: 'LOC-CSHM-001',
     isContainer: false
   }
-];
+];;
 
 const SEED_REQUESTS: VerificationRequest[] = [
   {
