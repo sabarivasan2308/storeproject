@@ -32,7 +32,7 @@ export interface Asset {
   billDate?: string;
   vendor: string;
   warrantyDetails: string;
-  status: 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned';
+  status: 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned' | 'Damaged';
   remarks: string;
   locationId: string; // reference to Location
   locationText?: string; // Formatted location text
