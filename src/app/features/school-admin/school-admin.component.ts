@@ -213,6 +213,8 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                       <th>Brand / Model</th>
                       <th>Quantity</th>
                       <th>Total Value</th>
+                      <th>Purchase Order</th>
+                      <th>Billing Date</th>
                       <th>Location Details</th>
                       <th>Status</th>
                       <th>QR Code</th>
@@ -240,6 +242,15 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                         <td>{{ asset.brand }} - {{ asset.model }}</td>
                         <td>{{ asset.quantity }}</td>
                         <td>₹{{ asset.totalPrice | number }}</td>
+                        <td><code>{{ asset.purchaseOrder || '-' }}</code></td>
+                        <td>
+                          {{ asset.billDate || '-' }}
+                          @if (asset.billNumber) {
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                              No: <code>{{ asset.billNumber }}</code>
+                            </div>
+                          }
+                        </td>
                         <td class="location-cell">{{ asset.locationText }}</td>
                         <td>
                           <span class="badge" 
@@ -251,16 +262,6 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                           >
                             {{ asset.status }}
                           </span>
-                          @if (asset.purchaseOrder || asset.billNumber) {
-                            <div class="purchase-meta-row" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-                              @if (asset.purchaseOrder) {
-                                <span>PO: <code>{{ asset.purchaseOrder }}</code></span>
-                              }
-                              @if (asset.billNumber) {
-                                <span style="margin-left: 8px;">Bill: <code>{{ asset.billNumber }}</code></span>
-                              }
-                            </div>
-                          }
                         </td>
                         <td>
                           <img 
@@ -280,7 +281,7 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="10" class="text-center">No assets found matching filters.</td>
+                        <td colspan="12" class="text-center">No assets found matching filters.</td>
                       </tr>
                     }
                   </tbody>
@@ -320,6 +321,8 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                       <tr>
                         <th>Asset ID</th>
                         <th>Asset Name</th>
+                        <th>Purchase Order</th>
+                        <th>Billing Date</th>
                         <th>System Count</th>
                         <th>Physical Count</th>
                         <th>Status</th>
@@ -335,6 +338,15 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                             <strong>{{ item.asset.name }}</strong>
                             @if (item.asset.isContainer) {
                               <span class="badge badge-purple is-container-tag">Container</span>
+                            }
+                          </td>
+                          <td><code>{{ item.asset.purchaseOrder || '-' }}</code></td>
+                          <td>
+                            {{ item.asset.billDate || '-' }}
+                            @if (item.asset.billNumber) {
+                              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                                No: <code>{{ item.asset.billNumber }}</code>
+                              </div>
                             }
                           </td>
                           <td><strong>{{ item.asset.quantity }}</strong></td>
@@ -478,6 +490,8 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                       <th>Brand / Model</th>
                       <th>Quantity</th>
                       <th>Total Value</th>
+                      <th>Purchase Order</th>
+                      <th>Billing Date</th>
                       <th>Location</th>
                       <th>Status</th>
                     </tr>
@@ -486,18 +500,20 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                     @for (asset of reportAssets(); track asset.id) {
                       <tr>
                         <td><code>{{ asset.id }}</code></td>
-                        <td>
-                          {{ asset.name }}
-                          @if (asset.purchaseOrder || asset.billNumber) {
-                            <div style="font-size: 0.75rem; color: #64748b;">
-                              PO: {{ asset.purchaseOrder || '-' }} | Bill: {{ asset.billNumber || '-' }} ({{ asset.billDate || '-' }})
-                            </div>
-                          }
-                        </td>
+                        <td>{{ asset.name }}</td>
                         <td>{{ asset.category }}</td>
                         <td>{{ asset.brand }} / {{ asset.model }}</td>
                         <td>{{ asset.quantity }}</td>
                         <td>₹{{ asset.totalPrice | number }}</td>
+                        <td><code>{{ asset.purchaseOrder || '-' }}</code></td>
+                        <td>
+                          {{ asset.billDate || '-' }}
+                          @if (asset.billNumber) {
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                              No: <code>{{ asset.billNumber }}</code>
+                            </div>
+                          }
+                        </td>
                         <td>{{ asset.locationText?.split(' -> ')?.slice(1)?.join(' -> ') }}</td>
                         <td>{{ asset.status }}</td>
                       </tr>

@@ -246,6 +246,8 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                       <th>Brand / Model</th>
                       <th>Quantity</th>
                       <th>Total Value</th>
+                      <th>Purchase Order</th>
+                      <th>Billing Date</th>
                       <th>Location</th>
                       <th>Status</th>
                       <th>QR Code</th>
@@ -273,6 +275,15 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                         <td>{{ asset.brand }} - {{ asset.model }}</td>
                         <td>{{ asset.quantity }}</td>
                         <td>₹{{ asset.totalPrice | number }}</td>
+                        <td><code>{{ asset.purchaseOrder || '-' }}</code></td>
+                        <td>
+                          {{ asset.billDate || '-' }}
+                          @if (asset.billNumber) {
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                              No: <code>{{ asset.billNumber }}</code>
+                            </div>
+                          }
+                        </td>
                         <td class="location-cell">{{ asset.locationText }}</td>
                         <td>
                           <span class="badge" 
@@ -284,16 +295,6 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                           >
                             {{ asset.status }}
                           </span>
-                          @if (asset.purchaseOrder || asset.billNumber) {
-                            <div class="purchase-meta-row" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-                              @if (asset.purchaseOrder) {
-                                <span>PO: <code>{{ asset.purchaseOrder }}</code></span>
-                              }
-                              @if (asset.billNumber) {
-                                <span style="margin-left: 8px;">Bill: <code>{{ asset.billNumber }}</code></span>
-                              }
-                            </div>
-                          }
                         </td>
                         <td>
                           <img 
@@ -312,7 +313,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="10" class="text-center">No assets found matching filters.</td>
+                        <td colspan="12" class="text-center">No assets found matching filters.</td>
                       </tr>
                     }
                   </tbody>
@@ -505,6 +506,8 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                         <th>Quantity</th>
                         <th>Unit Price</th>
                         <th>Total Value</th>
+                        <th>Purchase Order</th>
+                        <th>Billing Date</th>
                         <th>Remarks</th>
                       </tr>
                     </thead>
@@ -514,9 +517,9 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                           <td><code>{{ asset.id }}</code></td>
                           <td>
                             {{ asset.name }}
-                            @if (asset.purchaseOrder || asset.billNumber) {
+                            @if (asset.billNumber) {
                               <div style="font-size: 0.75rem; color: #64748b;">
-                                PO: {{ asset.purchaseOrder || '-' }} | Bill: {{ asset.billNumber || '-' }} ({{ asset.billDate || '-' }})
+                                Bill No: {{ asset.billNumber }}
                               </div>
                             }
                           </td>
@@ -526,11 +529,13 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                           <td>{{ asset.quantity }}</td>
                           <td>₹{{ asset.unitPrice | number }}</td>
                           <td>₹{{ asset.totalPrice | number }}</td>
+                          <td><code>{{ asset.purchaseOrder || '-' }}</code></td>
+                          <td>{{ asset.billDate || '-' }}</td>
                           <td>{{ asset.remarks }}</td>
                         </tr>
                       } @empty {
                         <tr>
-                          <td colspan="9" class="text-center">No assets matching report filters.</td>
+                          <td colspan="11" class="text-center">No assets matching report filters.</td>
                         </tr>
                       }
                     </tbody>
@@ -543,6 +548,8 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                         <th>Category</th>
                         <th>Qty</th>
                         <th>Total Value</th>
+                        <th>Purchase Order</th>
+                        <th>Billing Date</th>
                         <th>Status</th>
                         <th>Location Details</th>
                       </tr>
@@ -551,18 +558,13 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                       @for (asset of assets(); track asset.id) {
                         <tr>
                           <td><code>{{ asset.id }}</code></td>
-                          <td>
-                            {{ asset.name }}
-                            @if (asset.purchaseOrder || asset.billNumber) {
-                              <div style="font-size: 0.75rem; color: #64748b;">
-                                PO: {{ asset.purchaseOrder || '-' }} | Bill: {{ asset.billNumber || '-' }} ({{ asset.billDate || '-' }})
-                              </div>
-                            }
-                          </td>
+                          <td>{{ asset.name }}</td>
                           <td>{{ asset.locationText?.split(' -> ')?.shift() }}</td>
                           <td>{{ asset.category }}</td>
                           <td>{{ asset.quantity }}</td>
                           <td>₹{{ asset.totalPrice | number }}</td>
+                          <td><code>{{ asset.purchaseOrder || '-' }}</code></td>
+                          <td>{{ asset.billDate || '-' }}</td>
                           <td>{{ asset.status }}</td>
                           <td>{{ asset.locationText }}</td>
                         </tr>
