@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -586,120 +586,122 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
           <h2 class="display-header modal-title">{{ isEditingAsset() ? 'Edit Asset' : 'Add New Asset' }}</h2>
           
           <form (ngSubmit)="saveAsset()">
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Asset ID (e.g. FR-AKCP-BT-F1-001)</label>
-                <input type="text" class="form-input" [(ngModel)]="editingAsset.id" name="id" required [disabled]="isEditingAsset()" />
+            <div class="modal-body">
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Asset ID (e.g. FR-AKCP-BT-F1-001)</label>
+                  <input type="text" class="form-input" [(ngModel)]="editingAsset.id" name="id" required [disabled]="isEditingAsset()" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Asset Name</label>
+                  <input type="text" class="form-input" [(ngModel)]="editingAsset.name" name="name" required />
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Asset Name</label>
-                <input type="text" class="form-input" [(ngModel)]="editingAsset.name" name="name" required />
-              </div>
-            </div>
 
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Category</label>
-                <select class="form-input" [(ngModel)]="editingAsset.category" name="category" required>
-                  <option value="Refrigerators">Refrigerators</option>
-                  <option value="Lab Reagents">Lab Reagents</option>
-                  <option value="Sample Kits">Sample Kits</option>
-                  <option value="Computers">Computers</option>
-                  <option value="Projectors">Projectors</option>
-                  <option value="Air Conditioners">Air Conditioners</option>
-                  <option value="Others">Others</option>
-                </select>
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Category</label>
+                  <select class="form-input" [(ngModel)]="editingAsset.category" name="category" required>
+                    <option value="Refrigerators">Refrigerators</option>
+                    <option value="Lab Reagents">Lab Reagents</option>
+                    <option value="Sample Kits">Sample Kits</option>
+                    <option value="Computers">Computers</option>
+                    <option value="Projectors">Projectors</option>
+                    <option value="Air Conditioners">Air Conditioners</option>
+                    <option value="Others">Others</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Status</label>
+                  <select class="form-input" [(ngModel)]="editingAsset.status" name="status" required>
+                    <option value="Idle">Idle</option>
+                    <option value="Active">Active</option>
+                    <option value="Under Service">Under Service</option>
+                    <option value="Transferred">Transferred</option>
+                    <option value="Missing">Missing</option>
+                    <option value="Condemned">Condemned</option>
+                    <option value="Damaged">Damaged</option>
+                  </select>
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Status</label>
-                <select class="form-input" [(ngModel)]="editingAsset.status" name="status" required>
-                  <option value="Idle">Idle</option>
-                  <option value="Active">Active</option>
-                  <option value="Under Service">Under Service</option>
-                  <option value="Transferred">Transferred</option>
-                  <option value="Missing">Missing</option>
-                  <option value="Condemned">Condemned</option>
-                  <option value="Damaged">Damaged</option>
-                </select>
-              </div>
-            </div>
 
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Brand</label>
-                <input type="text" class="form-input" [(ngModel)]="editingAsset.brand" name="brand" />
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Brand</label>
+                  <input type="text" class="form-input" [(ngModel)]="editingAsset.brand" name="brand" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Model</label>
+                  <input type="text" class="form-input" [(ngModel)]="editingAsset.model" name="model" />
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Model</label>
-                <input type="text" class="form-input" [(ngModel)]="editingAsset.model" name="model" />
-              </div>
-            </div>
 
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Quantity</label>
-                <input type="number" class="form-input" [(ngModel)]="editingAsset.quantity" name="quantity" required />
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Quantity</label>
+                  <input type="number" class="form-input" [(ngModel)]="editingAsset.quantity" name="quantity" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Unit Price (₹)</label>
+                  <input type="number" class="form-input" [(ngModel)]="editingAsset.unitPrice" name="unitPrice" required />
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Unit Price (₹)</label>
-                <input type="number" class="form-input" [(ngModel)]="editingAsset.unitPrice" name="unitPrice" required />
-              </div>
-            </div>
 
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Location Mapping</label>
-                <select class="form-input" [(ngModel)]="editingAsset.locationId" name="locationId" required>
-                  @for (loc of locations(); track loc.id) {
-                    <option [value]="loc.id">
-                      {{ loc.institution }} - {{ loc.building }} ({{ loc.room }})
-                    </option>
-                  }
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Stored inside Container ID (Optional)</label>
-                <select class="form-input" [(ngModel)]="editingAsset.containerId" name="containerId">
-                  <option [value]="undefined">None (Root Asset)</option>
-                  @for (c of containerAssets(); track c.id) {
-                    @if (c.id !== editingAsset.id) {
-                      <option [value]="c.id">{{ c.name }} ({{ c.id }})</option>
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Location Mapping</label>
+                  <select class="form-input" [(ngModel)]="editingAsset.locationId" name="locationId" required>
+                    @for (loc of locations(); track loc.id) {
+                      <option [value]="loc.id">
+                        {{ loc.institution }} - {{ loc.building }} ({{ loc.room }})
+                      </option>
                     }
-                  }
-                </select>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Stored inside Container ID (Optional)</label>
+                  <select class="form-input" [(ngModel)]="editingAsset.containerId" name="containerId">
+                    <option [value]="undefined">None (Root Asset)</option>
+                    @for (c of containerAssets(); track c.id) {
+                      @if (c.id !== editingAsset.id) {
+                        <option [value]="c.id">{{ c.name }} ({{ c.id }})</option>
+                      }
+                    }
+                  </select>
+                </div>
               </div>
-            </div>
 
-            <div class="form-group flex-row">
-              <input type="checkbox" id="isContainer" [(ngModel)]="editingAsset.isContainer" name="isContainer" />
-              <label for="isContainer" class="form-label pointer-label">Acts as a Container (Can hold other assets)</label>
-            </div>
+              <div class="form-group flex-row">
+                <input type="checkbox" id="isContainer" [(ngModel)]="editingAsset.isContainer" name="isContainer" />
+                <label for="isContainer" class="form-label pointer-label">Acts as a Container (Can hold other assets)</label>
+              </div>
 
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Purchase Date</label>
-                <input type="date" class="form-input" [(ngModel)]="editingAsset.purchaseDate" name="purchaseDate" required />
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Purchase Date</label>
+                  <input type="date" class="form-input" [(ngModel)]="editingAsset.purchaseDate" name="purchaseDate" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Purchase Order (Alphanumeric)</label>
+                  <input type="text" class="form-input" [(ngModel)]="editingAsset.purchaseOrder" name="purchaseOrder" placeholder="PO-12345" />
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Purchase Order (Alphanumeric)</label>
-                <input type="text" class="form-input" [(ngModel)]="editingAsset.purchaseOrder" name="purchaseOrder" placeholder="PO-12345" />
-              </div>
-            </div>
 
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Bill Number (Alphanumeric)</label>
-                <input type="text" class="form-input" [(ngModel)]="editingAsset.billNumber" name="billNumber" placeholder="BILL-9876" />
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Bill Number (Alphanumeric)</label>
+                  <input type="text" class="form-input" [(ngModel)]="editingAsset.billNumber" name="billNumber" placeholder="BILL-9876" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Bill Date</label>
+                  <input type="date" class="form-input" [(ngModel)]="editingAsset.billDate" name="billDate" />
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Bill Date</label>
-                <input type="date" class="form-input" [(ngModel)]="editingAsset.billDate" name="billDate" />
-              </div>
-            </div>
 
-            <div class="form-group">
-              <label class="form-label">Warranty / Vendor / Details</label>
-              <input type="text" class="form-input" [(ngModel)]="editingAsset.warrantyDetails" name="warrantyDetails" placeholder="Warranty / Vendor details" />
+              <div class="form-group">
+                <label class="form-label">Warranty / Vendor / Details</label>
+                <input type="text" class="form-input" [(ngModel)]="editingAsset.warrantyDetails" name="warrantyDetails" placeholder="Warranty / Vendor details" />
+              </div>
             </div>
 
             <div class="modal-buttons">
@@ -1020,11 +1022,28 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
       align-items: center;
       justify-content: center;
       z-index: 1000;
+      overflow: hidden;
     }
     .modal-card {
       width: 100%;
       max-width: 600px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
       animation: modalSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+    }
+    .modal-card form {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+      overflow: hidden;
+    }
+    .modal-body {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding-right: 8px;
+      margin-bottom: 8px;
     }
     .modal-card.qr-modal {
       max-width: 380px;
@@ -1097,31 +1116,6 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
       to { transform: translateY(0); opacity: 1; }
     }
 
-    @media print {
-      body * {
-        visibility: hidden;
-      }
-      #print-area, #print-area * {
-        visibility: visible;
-      }
-      #print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        background: #fff !important;
-        color: #000 !important;
-      }
-      #print-area table th {
-        background: #f1f5f9 !important;
-        color: #000 !important;
-        border-bottom: 1px solid #cbd5e1 !important;
-      }
-      #print-area table td {
-        color: #000 !important;
-        border-bottom: 1px solid #e2e8f0 !important;
-      }
-    }
   `]
 })
 export class SuperAdminComponent implements OnInit {
@@ -1185,7 +1179,17 @@ export class SuperAdminComponent implements OnInit {
   constructor(
     private appwriteService: AppwriteService,
     private router: Router
-  ) {}
+  ) {
+    // Prevent body scroll when any modal is open
+    effect(() => {
+      const isModalOpen = this.showAssetModal() || this.showQR() || this.showReviewModal();
+      if (isModalOpen) {
+        document.body.classList.add('modal-open');
+      } else {
+        document.body.classList.remove('modal-open');
+      }
+    });
+  }
 
   async ngOnInit() {
     this.isMockActive.set(this.appwriteService.isUsingMock());

@@ -336,3 +336,166 @@ select.form-input option {
   font-size: 1.6rem;
   font-weight: 700;
 }
+
+/* Modal Open Scroll Lock */
+body.modal-open,
+body.modal-open .main-content {
+  overflow: hidden !important;
+  height: 100vh !important;
+}
+
+/* Global Print Stylesheet */
+@media print {
+  /* Set exact print color adjusting */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  html, body, app-root, .dashboard-container, .main-content, .tab-content {
+    background: #fff !important;
+    background-color: #fff !important;
+    color: #000 !important;
+  }
+
+  body::before,
+  body::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  /* Hide non-print layouts and widgets */
+  .sidebar,
+  .mock-alert-bar,
+  .filter-bar,
+  .action-header,
+  .page-heading,
+  button,
+  .btn,
+  .dashboard-grid,
+  nav,
+  aside,
+  header {
+    display: none !important;
+  }
+  
+  /* Ensure parent wrappers display correctly for printing */
+  .dashboard-container,
+  .main-content,
+  .tab-content {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    width: 100% !important;
+  }
+  
+  /* Style only the print area container to look professional and fill the A4 page */
+  #print-area {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  #print-area * {
+    visibility: visible !important;
+    color: #000 !important;
+  }
+
+  /* Header inside print area */
+  .report-print-header {
+    text-align: center !important;
+    margin-bottom: 30px !important;
+    border-bottom: 2px solid #000 !important;
+    padding-bottom: 10px !important;
+  }
+
+  .report-print-header h2 {
+    color: #000 !important;
+    font-size: 20pt !important;
+    margin: 0 0 5px 0 !important;
+  }
+
+  .report-print-header h3 {
+    color: #444 !important;
+    font-size: 14pt !important;
+    margin: 0 0 5px 0 !important;
+  }
+
+  .report-print-header p {
+    color: #666 !important;
+    font-size: 10pt !important;
+    margin: 0 !important;
+  }
+
+  /* Table layout and grid rules for clean pagination */
+  #print-area table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 20px !important;
+  }
+
+  #print-area th {
+    background: #f1f5f9 !important;
+    color: #000 !important;
+    border-bottom: 2px solid #000 !important;
+    font-weight: bold !important;
+    padding: 8px 10px !important;
+    font-size: 10pt !important;
+    text-align: left !important;
+  }
+
+  #print-area td {
+    padding: 8px 10px !important;
+    border-bottom: 1px solid #ddd !important;
+    color: #000 !important;
+    font-size: 9pt !important;
+  }
+
+  #print-area code {
+    background: #f1f5f9 !important;
+    color: #000 !important;
+    padding: 2px 4px !important;
+    border-radius: 4px !important;
+    font-size: 8.5pt !important;
+    font-family: monospace !important;
+  }
+
+  /* Badges inside table */
+  #print-area .badge {
+    background: #fff !important;
+    color: #000 !important;
+    border: 1px solid #000 !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    font-size: 8.5pt !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+  }
+
+  /* Repeat table headers across page breaks */
+  #print-area thead {
+    display: table-header-group !important;
+  }
+
+  #print-area tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Heading adjustments for print */
+  h2, h3, p {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+}

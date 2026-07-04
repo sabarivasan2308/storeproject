@@ -84,6 +84,18 @@ import { AppwriteService } from '../../core/services/appwrite.service';
             <span class="badge badge-orange">CSHM Admin</span>
             <code>cshm@kare.edu</code>
           </div>
+          <div class="demo-credential-row" (click)="fillCreds('akcas@kare.edu')">
+            <span class="badge badge-blue">AKCAS Admin</span>
+            <code>akcas@kare.edu</code>
+          </div>
+          <div class="demo-credential-row" (click)="fillCreds('akbed@kare.edu')">
+            <span class="badge badge-gray">AK B.Ed Admin</span>
+            <code>akbed@kare.edu</code>
+          </div>
+          <div class="demo-credential-row" (click)="fillCreds('kmch@kare.edu')">
+            <span class="badge badge-red">KMCH Admin</span>
+            <code>kmch@kare.edu</code>
+          </div>
         </div>
       </div>
     </div>

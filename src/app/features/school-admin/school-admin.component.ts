@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -534,118 +534,120 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
           <h2 class="display-header modal-title">Propose Add Asset</h2>
           
           <form (ngSubmit)="submitAddAssetPropose()">
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Asset ID (e.g. FR-AKCP-BT-F1-001)</label>
-                <input type="text" class="form-input" [(ngModel)]="proposeAsset.id" name="id" required />
+            <div class="modal-body">
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Asset ID (e.g. FR-AKCP-BT-F1-001)</label>
+                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.id" name="id" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Asset Name</label>
+                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.name" name="name" required />
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Asset Name</label>
-                <input type="text" class="form-input" [(ngModel)]="proposeAsset.name" name="name" required />
-              </div>
-            </div>
 
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Category</label>
-                <select class="form-input" [(ngModel)]="proposeAsset.category" name="category" required>
-                  <option value="Refrigerators">Refrigerators</option>
-                  <option value="Lab Reagents">Lab Reagents</option>
-                  <option value="Sample Kits">Sample Kits</option>
-                  <option value="Computers">Computers</option>
-                  <option value="Projectors">Projectors</option>
-                  <option value="Air Conditioners">Air Conditioners</option>
-                  <option value="Others">Others</option>
-                </select>
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Category</label>
+                  <select class="form-input" [(ngModel)]="proposeAsset.category" name="category" required>
+                    <option value="Refrigerators">Refrigerators</option>
+                    <option value="Lab Reagents">Lab Reagents</option>
+                    <option value="Sample Kits">Sample Kits</option>
+                    <option value="Computers">Computers</option>
+                    <option value="Projectors">Projectors</option>
+                    <option value="Air Conditioners">Air Conditioners</option>
+                    <option value="Others">Others</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Initial Status</label>
+                  <select class="form-input" [(ngModel)]="proposeAsset.status" name="status" required>
+                    <option value="Idle">Idle</option>
+                    <option value="Active">Active</option>
+                    <option value="Under Service">Under Service</option>
+                    <option value="Transferred">Transferred</option>
+                    <option value="Missing">Missing</option>
+                    <option value="Damaged">Damaged</option>
+                    <option value="Condemned">Condemned</option>
+                  </select>
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Initial Status</label>
-                <select class="form-input" [(ngModel)]="proposeAsset.status" name="status" required>
-                  <option value="Idle">Idle</option>
-                  <option value="Active">Active</option>
-                  <option value="Under Service">Under Service</option>
-                  <option value="Transferred">Transferred</option>
-                  <option value="Missing">Missing</option>
-                  <option value="Damaged">Damaged</option>
-                  <option value="Condemned">Condemned</option>
-                </select>
-              </div>
-            </div>
 
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Purchase Date</label>
-                <input type="date" class="form-input" [(ngModel)]="proposeAsset.purchaseDate" name="purchaseDate" required />
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Purchase Date</label>
+                  <input type="date" class="form-input" [(ngModel)]="proposeAsset.purchaseDate" name="purchaseDate" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Purchase Order (Alphanumeric)</label>
+                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.purchaseOrder" name="purchaseOrder" placeholder="PO-12345" />
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Purchase Order (Alphanumeric)</label>
-                <input type="text" class="form-input" [(ngModel)]="proposeAsset.purchaseOrder" name="purchaseOrder" placeholder="PO-12345" />
-              </div>
-            </div>
 
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Bill Number (Alphanumeric)</label>
-                <input type="text" class="form-input" [(ngModel)]="proposeAsset.billNumber" name="billNumber" placeholder="BILL-9876" />
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Bill Number (Alphanumeric)</label>
+                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.billNumber" name="billNumber" placeholder="BILL-9876" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Bill Date</label>
+                  <input type="date" class="form-input" [(ngModel)]="proposeAsset.billDate" name="billDate" />
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Bill Date</label>
-                <input type="date" class="form-input" [(ngModel)]="proposeAsset.billDate" name="billDate" />
-              </div>
-            </div>
 
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Brand</label>
-                <input type="text" class="form-input" [(ngModel)]="proposeAsset.brand" name="brand" />
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Brand</label>
+                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.brand" name="brand" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Model</label>
+                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.model" name="model" />
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Model</label>
-                <input type="text" class="form-input" [(ngModel)]="proposeAsset.model" name="model" />
-              </div>
-            </div>
 
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Quantity</label>
-                <input type="number" class="form-input" [(ngModel)]="proposeAsset.quantity" name="quantity" required />
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Quantity</label>
+                  <input type="number" class="form-input" [(ngModel)]="proposeAsset.quantity" name="quantity" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Unit Price (₹)</label>
+                  <input type="number" class="form-input" [(ngModel)]="proposeAsset.unitPrice" name="unitPrice" required />
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Unit Price (₹)</label>
-                <input type="number" class="form-input" [(ngModel)]="proposeAsset.unitPrice" name="unitPrice" required />
-              </div>
-            </div>
 
-            <div class="form-row-grid">
-              <div class="form-group">
-                <label class="form-label">Location Mapping</label>
-                <select class="form-input" [(ngModel)]="proposeAsset.locationId" name="locationId" required>
-                  @for (loc of institutionLocations(); track loc.id) {
-                    <option [value]="loc.id">
-                      {{ loc.building }} ({{ loc.room }})
-                    </option>
-                  }
-                </select>
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Location Mapping</label>
+                  <select class="form-input" [(ngModel)]="proposeAsset.locationId" name="locationId" required>
+                    @for (loc of institutionLocations(); track loc.id) {
+                      <option [value]="loc.id">
+                        {{ loc.building }} ({{ loc.room }})
+                      </option>
+                    }
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Stored inside Container (Optional)</label>
+                  <select class="form-input" [(ngModel)]="proposeAsset.containerId" name="containerId">
+                    <option [value]="undefined">None (Root Asset)</option>
+                    @for (c of containerAssets(); track c.id) {
+                      <option [value]="c.id">{{ c.name }} ({{ c.id }})</option>
+                    }
+                  </select>
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Stored inside Container (Optional)</label>
-                <select class="form-input" [(ngModel)]="proposeAsset.containerId" name="containerId">
-                  <option [value]="undefined">None (Root Asset)</option>
-                  @for (c of containerAssets(); track c.id) {
-                    <option [value]="c.id">{{ c.name }} ({{ c.id }})</option>
-                  }
-                </select>
+
+              <div class="form-group flex-row">
+                <input type="checkbox" id="isContainer" [(ngModel)]="proposeAsset.isContainer" name="isContainer" />
+                <label for="isContainer" class="form-label pointer-label">Acts as a Container (Can hold other assets)</label>
               </div>
-            </div>
 
-            <div class="form-group flex-row">
-              <input type="checkbox" id="isContainer" [(ngModel)]="proposeAsset.isContainer" name="isContainer" />
-              <label for="isContainer" class="form-label pointer-label">Acts as a Container (Can hold other assets)</label>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Reason for Adding Asset</label>
-              <input type="text" class="form-input" [(ngModel)]="proposeReason" name="proposeReason" required placeholder="Provide justification for Super Admin review" />
+              <div class="form-group">
+                <label class="form-label">Reason for Adding Asset</label>
+                <input type="text" class="form-input" [(ngModel)]="proposeReason" name="proposeReason" required placeholder="Provide justification for Super Admin review" />
+              </div>
             </div>
 
             <div class="modal-buttons">
@@ -664,33 +666,35 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
           <h2 class="display-header modal-title">Submit Verification Request</h2>
           <p class="review-meta">Proposing: <strong>{{ requestChangeType }}</strong> for {{ selectedAsset()?.name }}</p>
           
-          <div class="form-group">
-            <label class="form-label">Recorded Value (System)</label>
-            <input type="text" class="form-input" [value]="requestPreviousValue" disabled />
-          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">Recorded Value (System)</label>
+              <input type="text" class="form-input" [value]="requestPreviousValue" disabled />
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">Proposed New Value</label>
-            @if (requestChangeType === 'Quantity Update') {
-              <input type="number" class="form-input" [(ngModel)]="requestNewValue" required />
-            } @else if (requestChangeType === 'Status Update') {
-              <select class="form-input" [(ngModel)]="requestNewValue" required>
-                <option value="Idle">Idle</option>
-                <option value="Active">Active</option>
-                <option value="Under Service">Under Service</option>
-                <option value="Transferred">Transferred</option>
-                <option value="Missing">Missing</option>
-                <option value="Damaged">Damaged</option>
-                <option value="Condemned">Condemned</option>
-              </select>
-            } @else {
-              <input type="text" class="form-input" [value]="requestNewValue" disabled />
-            }
-          </div>
+            <div class="form-group">
+              <label class="form-label">Proposed New Value</label>
+              @if (requestChangeType === 'Quantity Update') {
+                <input type="number" class="form-input" [(ngModel)]="requestNewValue" required />
+              } @else if (requestChangeType === 'Status Update') {
+                <select class="form-input" [(ngModel)]="requestNewValue" required>
+                  <option value="Idle">Idle</option>
+                  <option value="Active">Active</option>
+                  <option value="Under Service">Under Service</option>
+                  <option value="Transferred">Transferred</option>
+                  <option value="Missing">Missing</option>
+                  <option value="Damaged">Damaged</option>
+                  <option value="Condemned">Condemned</option>
+                </select>
+              } @else {
+                <input type="text" class="form-input" [value]="requestNewValue" disabled />
+              }
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">Reason for discrepancy / change</label>
-            <textarea class="form-input text-area-input" [(ngModel)]="requestReason" rows="3" placeholder="Provide details e.g., 5 bottles damaged during biotech labs" required></textarea>
+            <div class="form-group">
+              <label class="form-label">Reason for discrepancy / change</label>
+              <textarea class="form-input text-area-input" [(ngModel)]="requestReason" rows="3" placeholder="Provide details e.g., 5 bottles damaged during biotech labs" required></textarea>
+            </div>
           </div>
 
           <div class="modal-buttons">
@@ -990,11 +994,28 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
       align-items: center;
       justify-content: center;
       z-index: 1000;
+      overflow: hidden;
     }
     .modal-card {
       width: 100%;
       max-width: 600px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
       animation: modalSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+    }
+    .modal-card form {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+      overflow: hidden;
+    }
+    .modal-body {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding-right: 8px;
+      margin-bottom: 8px;
     }
     .modal-card.qr-modal {
       max-width: 380px;
@@ -1064,32 +1085,6 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
       from { transform: translateY(20px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
     }
-
-    @media print {
-      body * {
-        visibility: hidden;
-      }
-      #print-area, #print-area * {
-        visibility: visible;
-      }
-      #print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        background: #fff !important;
-        color: #000 !important;
-      }
-      #print-area table th {
-        background: #f1f5f9 !important;
-        color: #000 !important;
-        border-bottom: 1px solid #cbd5e1 !important;
-      }
-      #print-area table td {
-        color: #000 !important;
-        border-bottom: 1px solid #e2e8f0 !important;
-      }
-    }
   `]
 })
 export class SchoolAdminComponent implements OnInit {
@@ -1152,7 +1147,17 @@ export class SchoolAdminComponent implements OnInit {
   constructor(
     private appwriteService: AppwriteService,
     private router: Router
-  ) {}
+  ) {
+    // Prevent body scroll when any modal is open
+    effect(() => {
+      const isModalOpen = this.showAddAssetModal() || this.showRequestModal() || this.showQR();
+      if (isModalOpen) {
+        document.body.classList.add('modal-open');
+      } else {
+        document.body.classList.remove('modal-open');
+      }
+    });
+  }
 
   async ngOnInit() {
     this.isMockActive.set(this.appwriteService.isUsingMock());
