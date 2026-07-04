@@ -203,6 +203,8 @@ export class AppwriteService {
     if (name.includes('linga')) return 'linga';
     if (name.includes('akcas')) return 'akcas';
     if (name.includes('cshm')) return 'cshm';
+    if (name.includes('akbed') || name.includes('b.ed')) return 'akbed';
+    if (name.includes('kmch')) return 'kmch';
     return 'kare';
   }
 
@@ -248,7 +250,7 @@ export class AppwriteService {
           room: d['room']
         }));
       } else {
-        const prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'kare'];
+        const prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
         const promises = prefixes.map(async prefix => {
           try {
             const response = await this.databases.listDocuments(
@@ -303,7 +305,7 @@ export class AppwriteService {
       const user = this.currentUser();
       const locs = await this.getLocations();
       
-      let prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'kare'];
+      let prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
       if (user && user.role === 'School Admin') {
         prefixes = [this.getPrefixForInstitution(user.institution)];
       }
@@ -620,7 +622,7 @@ export class AppwriteService {
       return MockDatabase.getRequests();
     } else {
       const user = this.currentUser();
-      let prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'kare'];
+      let prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
       if (user && user.role === 'School Admin') {
         prefixes = [this.getPrefixForInstitution(user.institution)];
       }
@@ -760,7 +762,7 @@ export class AppwriteService {
       let foundCollId = '';
       let foundPrefix = '';
       let reqData: any = null;
-      const prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'kare'];
+      const prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
       
       for (const pref of prefixes) {
         const testColl = `${pref}_requests`;
@@ -858,7 +860,7 @@ export class AppwriteService {
       return MockDatabase.getAuditLogs();
     } else {
       const user = this.currentUser();
-      let prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'kare'];
+      let prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
       if (user && user.role === 'School Admin') {
         prefixes = [this.getPrefixForInstitution(user.institution)];
       }

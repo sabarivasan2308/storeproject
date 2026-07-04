@@ -72,7 +72,9 @@ const SEED_USERS: AppUser[] = [
   { email: 'akcp@kare.edu', name: 'Prof. Ramesh Patel', role: 'School Admin', institution: 'AKCP' },
   { email: 'linga@kare.edu', name: 'Sister Mary Joseph', role: 'School Admin', institution: 'LINGA Global School' },
   { email: 'akcas@kare.edu', name: 'Dr. Anjali Verma', role: 'School Admin', institution: 'AKCAS' },
-  { email: 'cshm@kare.edu', name: 'Dr. R. Banupriya', role: 'School Admin', institution: 'CSHM' }
+  { email: 'cshm@kare.edu', name: 'Dr. R. Banupriya', role: 'School Admin', institution: 'CSHM' },
+  { email: 'akbed@kare.edu', name: 'Dr. S. Rajan', role: 'School Admin', institution: 'AK B.Ed College' },
+  { email: 'kmch@kare.edu', name: 'Dr. P. Sandeep', role: 'School Admin', institution: 'KMCH' }
 ];
 
 const SEED_LOCATIONS: Location[] = [
@@ -83,7 +85,9 @@ const SEED_LOCATIONS: Location[] = [
   { id: 'LOC-005', institution: 'AKCAS', building: 'Science Block', floor: 'Second Floor', department: 'Chemistry', room: 'CH-201' },
   { id: 'LOC-CSHM-001', institution: 'CSHM', building: 'CSHM Annex', floor: 'Ground Floor', department: 'Catering Science', room: 'Basic Training Kitchen' },
   { id: 'LOC-CSHM-002', institution: 'CSHM', building: 'CSHM Annex', floor: 'Ground Floor', department: 'Catering Science', room: 'Training Restaurant' },
-  { id: 'LOC-CSHM-003', institution: 'CSHM', building: 'CSHM Annex', floor: 'First Floor', department: 'Catering Science', room: 'Model Guest Room' }
+  { id: 'LOC-CSHM-003', institution: 'CSHM', building: 'CSHM Annex', floor: 'First Floor', department: 'Catering Science', room: 'Model Guest Room' },
+  { id: 'LOC-AKBED-001', institution: 'AK B.Ed College', building: 'Education Block', floor: 'Ground Floor', department: 'Pedagogy', room: 'ED-101' },
+  { id: 'LOC-KMCH-001', institution: 'KMCH', building: 'Medical Block', floor: 'First Floor', department: 'Clinical Medicine', room: 'MD-201' }
 ];
 
 const SEED_ASSETS: Asset[] = [
@@ -619,6 +623,75 @@ const SEED_ASSETS: Asset[] = [
     remarks: 'Missing since audit. Staff responsible: Mrs. R. Banupriya.',
     locationId: 'LOC-CSHM-001',
     isContainer: false
+  },
+  {
+    id: 'PC-AKBED-001',
+    name: 'Lenovo ThinkCentre PC',
+    category: 'Computers',
+    barcode: 'BAR-AKBED-PC-001',
+    qrCode: 'PC-AKBED-001',
+    brand: 'Lenovo',
+    model: 'M70q',
+    serialNumber: 'LN-SN-1122',
+    quantity: 15,
+    unitPrice: 42000,
+    totalPrice: 630000,
+    purchaseDate: '2025-06-10',
+    purchaseOrder: 'PO-AKBED-2025-001',
+    billNumber: 'BILL-AKBED-0011',
+    billDate: '2025-06-10',
+    vendor: 'Lenovo Commercial Store',
+    warrantyDetails: '3 Years Onsite Warranty',
+    status: 'Active',
+    remarks: 'For B.Ed student lab classwork',
+    locationId: 'LOC-AKBED-001',
+    isContainer: false
+  },
+  {
+    id: 'PM-KMCH-001',
+    name: 'Patient Monitor Pulse Oximeter',
+    category: 'Medical Equipment',
+    barcode: 'BAR-KMCH-PM-001',
+    qrCode: 'PM-KMCH-001',
+    brand: 'Philips',
+    model: 'Goldway G30E',
+    serialNumber: 'PL-SN-9988',
+    quantity: 5,
+    unitPrice: 85000,
+    totalPrice: 425000,
+    purchaseDate: '2025-02-15',
+    purchaseOrder: 'PO-KMCH-2025-004',
+    billNumber: 'BILL-KMCH-0450',
+    billDate: '2025-02-15',
+    vendor: 'Philips Health Systems',
+    warrantyDetails: '2 Years Medical Warranty',
+    status: 'Active',
+    remarks: 'For emergency ward patient monitoring',
+    locationId: 'LOC-KMCH-001',
+    isContainer: false
+  },
+  {
+    id: 'PR-CSHM-001',
+    name: 'Preethi Mixer Grinder (Damaged)',
+    category: 'Kitchen Appliances',
+    barcode: 'BAR-CSHM-MG-005',
+    qrCode: 'PR-CSHM-001',
+    brand: 'Preethi',
+    model: 'Blue Leaf Gold',
+    serialNumber: 'SN-MG-77882',
+    quantity: 1,
+    unitPrice: 6500,
+    totalPrice: 6500,
+    purchaseDate: '2024-02-18',
+    purchaseOrder: 'PO-CSHM-2024-002',
+    billNumber: 'BILL-CSHM-1189',
+    billDate: '2024-02-18',
+    vendor: 'Preethi Appliances',
+    warrantyDetails: 'Jar coupling damaged during practicals',
+    status: 'Damaged',
+    remarks: 'Jar coupling damaged during practicals',
+    locationId: 'LOC-CSHM-001',
+    isContainer: false
   }
 ];;
 
@@ -659,7 +732,7 @@ export class MockDatabase {
     if (storedUsers) {
       try {
         const users = JSON.parse(storedUsers);
-        if (Array.isArray(users) && !users.some(u => u.email === 'cshm@kare.edu')) {
+        if (Array.isArray(users) && (!users.some(u => u.email === 'cshm@kare.edu') || !users.some(u => u.email === 'akbed@kare.edu'))) {
           needsReset = true;
         }
       } catch (e) {

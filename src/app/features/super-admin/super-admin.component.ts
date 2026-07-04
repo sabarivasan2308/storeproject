@@ -104,6 +104,13 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                 </div>
               </div>
               <div class="glass-panel kpi-card">
+                <div class="kpi-icon-container">💥</div>
+                <div class="kpi-data">
+                  <span class="kpi-label">Damaged Assets</span>
+                  <span class="kpi-value text-orange">{{ damagedAssetsCount() }}</span>
+                </div>
+              </div>
+              <div class="glass-panel kpi-card">
                 <div class="kpi-icon-container">💤</div>
                 <div class="kpi-data">
                   <span class="kpi-label">Idle Assets</span>
@@ -130,6 +137,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                       <th>Assets Count</th>
                       <th>Total Value</th>
                       <th>Under Service</th>
+                      <th>Damaged Items</th>
                       <th>Missing Items</th>
                       <th>Condemned</th>
                     </tr>
@@ -143,6 +151,11 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                         <td>
                           <span class="badge" [class.badge-blue]="inst.underService > 0" [class.badge-green]="inst.underService === 0">
                             {{ inst.underService }}
+                          </span>
+                        </td>
+                        <td>
+                          <span class="badge" [class.badge-orange]="inst.damaged > 0" [class.badge-green]="inst.damaged === 0">
+                            {{ inst.damaged }}
                           </span>
                         </td>
                         <td>
@@ -208,6 +221,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                   <option value="Transferred">Transferred</option>
                   <option value="Missing">Missing</option>
                   <option value="Condemned">Condemned</option>
+                  <option value="Damaged">Damaged</option>
                 </select>
               </div>
               <div class="filter-group" style="min-width: 150px;">
@@ -264,7 +278,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                           <span class="badge" 
                             [class.badge-green]="asset.status === 'Active'" 
                             [class.badge-red]="asset.status === 'Condemned'"
-                            [class.badge-orange]="asset.status === 'Missing'"
+                            [class.badge-orange]="asset.status === 'Missing' || asset.status === 'Damaged'"
                             [class.badge-blue]="asset.status === 'Under Service' || asset.status === 'Transferred'"
                             [class.badge-gray]="asset.status === 'Idle'"
                           >
@@ -345,8 +359,8 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                         <td>
                           <span class="badge"
                             [class.badge-purple]="req.changeType === 'Quantity Update'"
-                            [class.badge-red]="req.changeType.startsWith('Mark Damaged') || req.changeType.startsWith('Mark Condemned')"
-                            [class.badge-orange]="req.changeType.startsWith('Mark Missing')"
+                            [class.badge-red]="req.changeType.startsWith('Mark Condemned')"
+                            [class.badge-orange]="req.changeType.startsWith('Mark Missing') || req.changeType.startsWith('Mark Damaged')"
                             [class.badge-cyan]="req.changeType === 'Add Asset'"
                             [class.badge-green]="req.changeType.startsWith('Mark Active')"
                             [class.badge-blue]="req.changeType.startsWith('Mark Under Service') || req.changeType.startsWith('Mark Transferred') || req.changeType.startsWith('Mark Idle')"
@@ -462,6 +476,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                         <th>Total Assets</th>
                         <th>Total Inventory Value</th>
                         <th>Under Service</th>
+                        <th>Damaged Items</th>
                         <th>Missing Items</th>
                         <th>Condemned</th>
                       </tr>
@@ -473,6 +488,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                           <td>{{ inst.count }}</td>
                           <td>₹{{ inst.value | number }}</td>
                           <td>{{ inst.underService }}</td>
+                          <td>{{ inst.damaged }}</td>
                           <td>{{ inst.missing }}</td>
                           <td>{{ inst.condemned }}</td>
                         </tr>
@@ -601,6 +617,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
                   <option value="Transferred">Transferred</option>
                   <option value="Missing">Missing</option>
                   <option value="Condemned">Condemned</option>
+                  <option value="Damaged">Damaged</option>
                 </select>
               </div>
             </div>
@@ -1134,7 +1151,7 @@ export class SuperAdminComponent implements OnInit {
   filterBillNumber = signal<string>('');
 
   // Institution List constant
-  institutionList = ['KARE', 'LINGA Global School', 'AK B.Ed College', 'AKCP', 'AKCAS', 'KMCH'];
+  institutionList = ['KARE', 'LINGA Global School', 'AK B.Ed College', 'AKCP', 'AKCAS', 'KMCH', 'CSHM'];
 
   // Modals & Temp States
   showAssetModal = signal<boolean>(false);
@@ -1209,6 +1226,7 @@ export class SuperAdminComponent implements OnInit {
   underServiceCount = computed(() => this.assets().filter(a => a.status === 'Under Service').reduce((acc, a) => acc + a.quantity, 0));
   missingAssetsCount = computed(() => this.assets().filter(a => a.status === 'Missing').reduce((acc, a) => acc + a.quantity, 0));
   condemnedAssetsCount = computed(() => this.assets().filter(a => a.status === 'Condemned').reduce((acc, a) => acc + a.quantity, 0));
+  damagedAssetsCount = computed(() => this.assets().filter(a => a.status === 'Damaged').reduce((acc, a) => acc + a.quantity, 0));
   pendingRequestsCount = computed(() => this.requests().filter(r => r.status === 'Pending').length);
 
   institutionSummaries = computed(() => {
@@ -1219,6 +1237,7 @@ export class SuperAdminComponent implements OnInit {
         count: instAssets.reduce((acc, a) => acc + a.quantity, 0),
         value: instAssets.reduce((acc, a) => acc + a.totalPrice, 0),
         underService: instAssets.filter(a => a.status === 'Under Service').reduce((acc, a) => acc + a.quantity, 0),
+        damaged: instAssets.filter(a => a.status === 'Damaged').reduce((acc, a) => acc + a.quantity, 0),
         missing: instAssets.filter(a => a.status === 'Missing').reduce((acc, a) => acc + a.quantity, 0),
         condemned: instAssets.filter(a => a.status === 'Condemned').reduce((acc, a) => acc + a.quantity, 0)
       };
@@ -1249,7 +1268,7 @@ export class SuperAdminComponent implements OnInit {
 
   reportAssets = computed(() => {
     if (this.reportType === 'damaged') {
-      return this.assets().filter(a => a.status === 'Under Service' || a.status === 'Condemned');
+      return this.assets().filter(a => a.status === 'Under Service' || a.status === 'Condemned' || a.status === 'Damaged');
     }
     if (this.reportType === 'missing') {
       return this.assets().filter(a => a.status === 'Missing');

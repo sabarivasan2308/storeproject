@@ -97,6 +97,13 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                 </div>
               </div>
               <div class="glass-panel kpi-card">
+                <div class="kpi-icon-container">💥</div>
+                <div class="kpi-data">
+                  <span class="kpi-label">Damaged Assets</span>
+                  <span class="kpi-value text-orange">{{ damagedAssetsCount() }}</span>
+                </div>
+              </div>
+              <div class="glass-panel kpi-card">
                 <div class="kpi-icon-container">💤</div>
                 <div class="kpi-data">
                   <span class="kpi-label">Idle Assets</span>
@@ -238,7 +245,7 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                           <span class="badge" 
                             [class.badge-green]="asset.status === 'Active'" 
                             [class.badge-red]="asset.status === 'Condemned'"
-                            [class.badge-orange]="asset.status === 'Missing'"
+                            [class.badge-orange]="asset.status === 'Missing' || asset.status === 'Damaged'"
                             [class.badge-blue]="asset.status === 'Under Service' || asset.status === 'Transferred'"
                             [class.badge-gray]="asset.status === 'Idle'"
                           >
@@ -341,6 +348,7 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                               <option value="Under Service">Under Service</option>
                               <option value="Transferred">Transferred</option>
                               <option value="Missing">Missing</option>
+                              <option value="Damaged">Damaged</option>
                               <option value="Condemned">Condemned</option>
                             </select>
                           </td>
@@ -542,6 +550,7 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                   <option value="Under Service">Under Service</option>
                   <option value="Transferred">Transferred</option>
                   <option value="Missing">Missing</option>
+                  <option value="Damaged">Damaged</option>
                   <option value="Condemned">Condemned</option>
                 </select>
               </div>
@@ -655,6 +664,7 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
                 <option value="Under Service">Under Service</option>
                 <option value="Transferred">Transferred</option>
                 <option value="Missing">Missing</option>
+                <option value="Damaged">Damaged</option>
                 <option value="Condemned">Condemned</option>
               </select>
             } @else {
@@ -1091,7 +1101,7 @@ export class SchoolAdminComponent implements OnInit {
   auditItems: Array<{
     asset: Asset;
     physicalCount: number;
-    status: 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned';
+    status: 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned' | 'Damaged';
     reason: string;
   }> = [];
 
@@ -1170,6 +1180,7 @@ export class SchoolAdminComponent implements OnInit {
   underServiceCount = computed(() => this.assets().filter(a => a.status === 'Under Service').reduce((acc, a) => acc + a.quantity, 0));
   missingAssetsCount = computed(() => this.assets().filter(a => a.status === 'Missing').reduce((acc, a) => acc + a.quantity, 0));
   condemnedAssetsCount = computed(() => this.assets().filter(a => a.status === 'Condemned').reduce((acc, a) => acc + a.quantity, 0));
+  damagedAssetsCount = computed(() => this.assets().filter(a => a.status === 'Damaged').reduce((acc, a) => acc + a.quantity, 0));
   pendingRequestsCount = computed(() => this.institutionRequests().filter(r => r.status === 'Pending').length);
 
   institutionLocations = () => this.locations();
@@ -1191,7 +1202,7 @@ export class SchoolAdminComponent implements OnInit {
         count: catAssets.reduce((acc, a) => acc + a.quantity, 0),
         value: catAssets.reduce((acc, a) => acc + a.totalPrice, 0),
         active: catAssets.filter(a => a.status === 'Active' || a.status === 'Idle').reduce((acc, a) => acc + a.quantity, 0),
-        damagedMissing: catAssets.filter(a => a.status === 'Under Service' || a.status === 'Missing' || a.status === 'Condemned').reduce((acc, a) => acc + a.quantity, 0)
+        damagedMissing: catAssets.filter(a => a.status === 'Under Service' || a.status === 'Missing' || a.status === 'Condemned' || a.status === 'Damaged').reduce((acc, a) => acc + a.quantity, 0)
       };
     });
   });
@@ -1223,7 +1234,7 @@ export class SchoolAdminComponent implements OnInit {
     this.auditItems = locAssets.map(a => ({
       asset: a,
       physicalCount: a.quantity,
-      status: a.status as 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned',
+      status: a.status as 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned' | 'Damaged',
       reason: ''
     }));
   }
@@ -1431,7 +1442,7 @@ export class SchoolAdminComponent implements OnInit {
   // Reporting
   reportAssets = computed(() => {
     if (this.reportType === 'damaged') {
-      return this.assets().filter(a => a.status === 'Under Service' || a.status === 'Condemned');
+      return this.assets().filter(a => a.status === 'Under Service' || a.status === 'Condemned' || a.status === 'Damaged');
     }
     if (this.reportType === 'missing') {
       return this.assets().filter(a => a.status === 'Missing');
