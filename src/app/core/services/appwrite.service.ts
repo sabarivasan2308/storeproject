@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { Client, Account, Databases, ID, Query } from 'appwrite';
+import { Client, Account, Databases, ID, Query, Teams } from 'appwrite';
 import { APPWRITE_CONFIG } from '../config/appwrite.config';
 import { AppUser, Asset, Location, VerificationRequest, AuditLog } from '../models/types';
 
@@ -10,6 +10,7 @@ export class AppwriteService {
   private client!: Client;
   private account!: Account;
   private databases!: Databases;
+  private teams!: Teams;
   
   // State Signals
   isUsingMock = signal<boolean>(false);
@@ -32,6 +33,7 @@ export class AppwriteService {
         
         this.account = new Account(this.client);
         this.databases = new Databases(this.client);
+        this.teams = new Teams(this.client);
         
         try {
           const userSession = await this.account.get();
@@ -39,16 +41,33 @@ export class AppwriteService {
           let institution = 'AKCP';
           
           try {
-            const userDoc = await this.databases.getDocument(
-              APPWRITE_CONFIG.DATABASE_ID,
-              APPWRITE_CONFIG.COLLECTIONS.USERS,
-              userSession.$id
-            );
-            role = userDoc['role'];
-            institution = userDoc['institution'];
-          } catch {
-            role = userSession.email.includes('super') ? 'Super Admin' : 'School Admin';
-            institution = 'AKCP';
+            const teamsList = await this.teams.list();
+            const teamIds = teamsList.teams.map(t => t.$id);
+            
+            if (teamIds.includes('super_admin')) {
+              role = 'Super Admin';
+              institution = 'KARE';
+            } else {
+              role = 'School Admin';
+              const schoolTeam = teamIds.find(id => id.startsWith('school_'));
+              if (schoolTeam) {
+                institution = schoolTeam.replace('school_', '').toUpperCase();
+              }
+            }
+          } catch (teamErr) {
+            console.error('Failed to retrieve verified teams, falling back to profile document:', teamErr);
+            try {
+              const userDoc = await this.databases.getDocument(
+                APPWRITE_CONFIG.DATABASE_ID,
+                APPWRITE_CONFIG.COLLECTIONS.USERS,
+                userSession.$id
+              );
+              role = userDoc['role'];
+              institution = userDoc['institution'];
+            } catch {
+              role = userSession.email.includes('super') ? 'Super Admin' : 'School Admin';
+              institution = 'AKCP';
+            }
           }
           
           this.currentUser.set({
@@ -88,15 +107,32 @@ export class AppwriteService {
       let institution = 'AKCP';
       
       try {
-        const userDoc = await this.databases.getDocument(
-          APPWRITE_CONFIG.DATABASE_ID,
-          APPWRITE_CONFIG.COLLECTIONS.USERS,
-          userSession.$id
-        );
-        role = userDoc['role'];
-        institution = userDoc['institution'];
-      } catch {
-        role = userSession.email.includes('super') ? 'Super Admin' : 'School Admin';
+        const teamsList = await this.teams.list();
+        const teamIds = teamsList.teams.map(t => t.$id);
+        
+        if (teamIds.includes('super_admin')) {
+          role = 'Super Admin';
+          institution = 'KARE';
+        } else {
+          role = 'School Admin';
+          const schoolTeam = teamIds.find(id => id.startsWith('school_'));
+          if (schoolTeam) {
+            institution = schoolTeam.replace('school_', '').toUpperCase();
+          }
+        }
+      } catch (teamErr) {
+        console.error('Failed to retrieve verified teams during login, falling back to profile document:', teamErr);
+        try {
+          const userDoc = await this.databases.getDocument(
+            APPWRITE_CONFIG.DATABASE_ID,
+            APPWRITE_CONFIG.COLLECTIONS.USERS,
+            userSession.$id
+          );
+          role = userDoc['role'];
+          institution = userDoc['institution'];
+        } catch {
+          role = userSession.email.includes('super') ? 'Super Admin' : 'School Admin';
+        }
       }
       
       const loggedUser: AppUser = {
