@@ -366,7 +366,7 @@ export class AppwriteService {
     
     let existingCollId = collId;
     const allColls = ['assets', 'consumables', 'furniture'];
-    const prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'kare'];
+    const prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
     let found = false;
     
     for (const pref of prefixes) {
@@ -425,7 +425,7 @@ export class AppwriteService {
     let asset: Asset | null = null;
     let foundCollId = '';
     const allColls = ['assets', 'consumables', 'furniture'];
-    const prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'kare'];
+    const prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
     
     for (const pref of prefixes) {
       for (const type of allColls) {

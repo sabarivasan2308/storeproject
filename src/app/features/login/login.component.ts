@@ -72,6 +72,10 @@ import { AppwriteService } from '../../core/services/appwrite.service';
             <span class="badge badge-purple">Super Admin</span>
             <code>super@kare.edu</code>
           </div>
+          <div class="demo-credential-row" (click)="fillCreds('kare@kare.edu')">
+            <span class="badge badge-indigo">KARE Admin</span>
+            <code>kare@kare.edu</code>
+          </div>
           <div class="demo-credential-row" (click)="fillCreds('akcp@kare.edu')">
             <span class="badge badge-cyan">School Admin</span>
             <code>akcp@kare.edu</code>

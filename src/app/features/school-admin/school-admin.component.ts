@@ -202,17 +202,13 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
                 <table class="glass-table">
                   <thead>
                     <tr>
-                      <th>Asset ID</th>
-                      <th>Asset Name</th>
-                      <th>Category</th>
-                      <th>Brand / Model</th>
-                      <th>Quantity</th>
-                      <th>Total Value</th>
-                      <th>Purchase Order</th>
-                      <th>Billing Date</th>
-                      <th>Location Details</th>
-                      <th>Status</th>
-                      <th>QR Code</th>
+                      <th (click)="toggleSort('id')" class="sortable-header">Asset ID <span class="sort-indicator">{{ getSortIcon('id') }}</span></th>
+                      <th (click)="toggleSort('name')" class="sortable-header">Asset Name <span class="sort-indicator">{{ getSortIcon('name') }}</span></th>
+                      <th (click)="toggleSort('category')" class="sortable-header">Category <span class="sort-indicator">{{ getSortIcon('category') }}</span></th>
+                      <th (click)="toggleSort('quantity')" class="sortable-header">Quantity <span class="sort-indicator">{{ getSortIcon('quantity') }}</span></th>
+                      <th (click)="toggleSort('totalPrice')" class="sortable-header">Total Value <span class="sort-indicator">{{ getSortIcon('totalPrice') }}</span></th>
+                      <th (click)="toggleSort('vendor')" class="sortable-header">Vendor <span class="sort-indicator">{{ getSortIcon('vendor') }}</span></th>
+                      <th (click)="toggleSort('status')" class="sortable-header">Status <span class="sort-indicator">{{ getSortIcon('status') }}</span></th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -234,19 +230,9 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
                           }
                         </td>
                         <td>{{ asset.category }}</td>
-                        <td>{{ asset.brand }} - {{ asset.model }}</td>
                         <td>{{ asset.quantity }}</td>
                         <td>₹{{ asset.totalPrice | number }}</td>
-                        <td><code>{{ asset.purchaseOrder || '-' }}</code></td>
-                        <td>
-                          {{ asset.billDate || '-' }}
-                          @if (asset.billNumber) {
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-                              No: <code>{{ asset.billNumber }}</code>
-                            </div>
-                          }
-                        </td>
-                        <td class="location-cell">{{ asset.locationText }}</td>
+                        <td>{{ asset.vendor || '-' }}</td>
                         <td>
                           <span class="badge" 
                             [class.badge-green]="asset.status === 'Active'" 
@@ -259,16 +245,8 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
                           </span>
                         </td>
                         <td>
-                          <img 
-                            [src]="'https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=' + asset.id" 
-                            alt="QR"
-                            class="qr-thumbnail"
-                            (click)="showQRModal(asset.id, asset.name)"
-                          />
-                        </td>
-                        <td>
                           <div class="action-buttons">
-                            <!-- Change requires request to Super Admin -->
+                            <button class="btn btn-secondary btn-icon" (click)="selectedDrawerAsset.set(asset)" title="View Details">🔍</button>
                             <button class="btn btn-secondary btn-icon" (click)="openRequestModal(asset, 'Quantity Update')" title="Update Stock">🔢</button>
                             <button class="btn btn-secondary btn-icon" (click)="openRequestModal(asset, 'Status Update')" title="Update Status">⚙️</button>
                           </div>
@@ -276,7 +254,7 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="12" class="text-center">No assets found matching filters.</td>
+                        <td colspan="8" class="text-center">No assets found matching filters.</td>
                       </tr>
                     }
                   </tbody>
@@ -639,6 +617,28 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
                 <label for="isContainer" class="form-label pointer-label">Acts as a Container (Can hold other assets)</label>
               </div>
 
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Vendor</label>
+                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.vendor" name="vendor" placeholder="e.g. Acme Corp" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Warranty Details</label>
+                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.warrantyDetails" name="warrantyDetails" placeholder="e.g. 3 Years Onsite" />
+                </div>
+              </div>
+
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label">Serial Number</label>
+                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.serialNumber" name="serialNumber" placeholder="e.g. SN123456789" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Remarks</label>
+                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.remarks" name="remarks" placeholder="Any additional notes..." />
+                </div>
+              </div>
+
               <div class="form-group">
                 <label class="form-label">Reason for Adding Asset</label>
                 <input type="text" class="form-input" [(ngModel)]="proposeReason" name="proposeReason" required placeholder="Provide justification for Super Admin review" />
@@ -712,6 +712,116 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
           <button class="btn btn-secondary" (click)="closeQRModal()">Close</button>
         </div>
       </div>
+    }
+
+    <!-- Side Details Drawer -->
+    @if (selectedDrawerAsset(); as asset) {
+      <div class="drawer-backdrop" (click)="selectedDrawerAsset.set(null)"></div>
+      <aside class="side-drawer glass-panel" [class.open]="selectedDrawerAsset() !== null">
+        <div class="drawer-header">
+          <h2 class="drawer-title">Asset Details</h2>
+          <button class="btn-close" (click)="selectedDrawerAsset.set(null)">✕</button>
+        </div>
+        
+        <div class="drawer-body">
+          <div class="qr-print-section">
+            <img 
+              [src]="'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + asset.id" 
+              alt="QR Code" 
+              class="drawer-qr"
+            />
+            <button class="btn btn-secondary btn-sm" (click)="printAssetQR(asset)">
+              🖨️ Print QR Code
+            </button>
+          </div>
+
+          <div class="detail-section">
+            <h3>General Info</h3>
+            <div class="detail-grid">
+              <div class="detail-label">Asset ID</div>
+              <div class="detail-value"><code>{{ asset.id }}</code></div>
+              
+              <div class="detail-label">Name</div>
+              <div class="detail-value"><strong>{{ asset.name }}</strong></div>
+              
+              <div class="detail-label">Category</div>
+              <div class="detail-value">{{ asset.category }}</div>
+              
+              <div class="detail-label">Status</div>
+              <div class="detail-value">
+                <span class="badge" 
+                  [class.badge-green]="asset.status === 'Active'" 
+                  [class.badge-red]="asset.status === 'Condemned'"
+                  [class.badge-orange]="asset.status === 'Missing' || asset.status === 'Damaged'"
+                  [class.badge-blue]="asset.status === 'Under Service' || asset.status === 'Transferred'"
+                  [class.badge-gray]="asset.status === 'Idle'"
+                >
+                  {{ asset.status }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h3>Specification</h3>
+            <div class="detail-grid">
+              <div class="detail-label">Brand</div>
+              <div class="detail-value">{{ asset.brand || '-' }}</div>
+              
+              <div class="detail-label">Model</div>
+              <div class="detail-value">{{ asset.model || '-' }}</div>
+              
+              <div class="detail-label">Serial Number</div>
+              <div class="detail-value"><code>{{ asset.serialNumber || '-' }}</code></div>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h3>Procurement & Billing</h3>
+            <div class="detail-grid">
+              <div class="detail-label">Quantity</div>
+              <div class="detail-value">{{ asset.quantity }}</div>
+
+              <div class="detail-label">Unit Price</div>
+              <div class="detail-value">₹{{ asset.unitPrice | number }}</div>
+
+              <div class="detail-label">Total Value</div>
+              <div class="detail-value">₹{{ asset.totalPrice | number }}</div>
+
+              <div class="detail-label">Purchase Date</div>
+              <div class="detail-value">{{ asset.purchaseDate || '-' }}</div>
+
+              <div class="detail-label">Purchase Order</div>
+              <div class="detail-value"><code>{{ asset.purchaseOrder || '-' }}</code></div>
+
+              <div class="detail-label">Bill Number</div>
+              <div class="detail-value"><code>{{ asset.billNumber || '-' }}</code></div>
+
+              <div class="detail-label">Bill Date</div>
+              <div class="detail-value">{{ asset.billDate || '-' }}</div>
+              
+              <div class="detail-label">Vendor</div>
+              <div class="detail-value">{{ asset.vendor || '-' }}</div>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h3>Location & Support</h3>
+            <div class="detail-grid">
+              <div class="detail-label">Location</div>
+              <div class="detail-value">{{ asset.locationText || '-' }}</div>
+
+              <div class="detail-label">Warranty</div>
+              <div class="detail-value">{{ asset.warrantyDetails || '-' }}</div>
+            </div>
+          </div>
+
+          <div class="detail-section" *ngIf="asset.remarks">
+            <h3>Remarks</h3>
+            <p class="remarks-text">{{ asset.remarks }}</p>
+          </div>
+        </div>
+      </aside>
     }
   `,
   styles: [`
@@ -1080,6 +1190,136 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
       from { transform: translateY(20px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
     }
+
+    /* Side Drawer Styles */
+    .drawer-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      z-index: 999;
+    }
+    .side-drawer {
+      position: fixed;
+      top: 0;
+      right: -450px;
+      width: 420px;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(20px);
+      border-left: 1px solid var(--glass-border);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .side-drawer.open {
+      right: 0;
+    }
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .drawer-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, #fff 0%, #22d3ee 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .btn-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 4px;
+      transition: color 0.2s;
+    }
+    .btn-close:hover {
+      color: #fff;
+    }
+    .drawer-body {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .qr-print-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+    }
+    .drawer-qr {
+      width: 150px;
+      height: 150px;
+      background: #fff;
+      padding: 8px;
+      border-radius: 8px;
+    }
+    .detail-section {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 16px;
+    }
+    .detail-section:last-child {
+      border-bottom: none;
+    }
+    .detail-section h3 {
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent-cyan);
+      margin-bottom: 12px;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 8px 16px;
+      font-size: 0.9rem;
+    }
+    .detail-label {
+      color: var(--text-secondary);
+    }
+    .detail-value {
+      color: var(--text-primary);
+      word-break: break-all;
+    }
+    .remarks-text {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--glass-border);
+    }
+    th.sortable-header {
+      cursor: pointer;
+      user-select: none;
+    }
+    th.sortable-header:hover {
+      background: rgba(255, 255, 255, 0.05) !important;
+    }
+    .sort-indicator {
+      margin-left: 4px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
   `]
 })
 export class SchoolAdminComponent implements OnInit {
@@ -1089,6 +1329,11 @@ export class SchoolAdminComponent implements OnInit {
   userEmail = signal<string>('akcp@kare.edu');
   institutionName = signal<string>('AKCP');
   
+  // Sorting & Drawer State
+  sortColumn = signal<string>('id');
+  sortAscending = signal<boolean>(true);
+  selectedDrawerAsset = signal<Asset | null>(null);
+
   // Data Signals
   assets = signal<Asset[]>([]);
   locations = signal<Location[]>([]);
@@ -1145,7 +1390,7 @@ export class SchoolAdminComponent implements OnInit {
   ) {
     // Prevent body scroll when any modal is open
     effect(() => {
-      const isModalOpen = this.showAddAssetModal() || this.showRequestModal() || this.showQR();
+      const isModalOpen = this.showAddAssetModal() || this.showRequestModal() || this.showQR() || this.selectedDrawerAsset() !== null;
       if (isModalOpen) {
         document.body.classList.add('modal-open');
       } else {
@@ -1224,15 +1469,38 @@ export class SchoolAdminComponent implements OnInit {
   });
 
   filteredAssets = computed(() => {
-    return this.assets().filter(a => {
+    const list = this.assets().filter(a => {
       const matchSearch = this.searchQuery() === '' || 
         a.name.toLowerCase().includes(this.searchQuery().toLowerCase()) || 
-        a.id.toLowerCase().includes(this.searchQuery().toLowerCase());
+        a.id.toLowerCase().includes(this.searchQuery().toLowerCase()) ||
+        (a.vendor || '').toLowerCase().includes(this.searchQuery().toLowerCase());
       const matchCat = this.filterCategory() === 'All' || a.category === this.filterCategory();
       const matchStatus = this.filterStatus() === 'All' || a.status === this.filterStatus();
       const matchPO = this.filterPO() === '' || (a.purchaseOrder || '').toLowerCase().includes(this.filterPO().toLowerCase());
       const matchBill = this.filterBillNumber() === '' || (a.billNumber || '').toLowerCase().includes(this.filterBillNumber().toLowerCase());
       return matchSearch && matchCat && matchStatus && matchPO && matchBill;
+    });
+
+    const col = this.sortColumn();
+    const asc = this.sortAscending() ? 1 : -1;
+
+    return list.sort((a, b) => {
+      let valA = (a as any)[col];
+      let valB = (b as any)[col];
+
+      if (valA === undefined || valA === null) valA = '';
+      if (valB === undefined || valB === null) valB = '';
+
+      if (typeof valA === 'string') {
+        valA = valA.toLowerCase();
+      }
+      if (typeof valB === 'string') {
+        valB = valB.toLowerCase();
+      }
+
+      if (valA < valB) return -1 * asc;
+      if (valA > valB) return 1 * asc;
+      return 0;
     });
   });
 
@@ -1472,5 +1740,71 @@ export class SchoolAdminComponent implements OnInit {
   async onLogout() {
     await this.appwriteService.logout();
     this.router.navigate(['/login']);
+  }
+
+  toggleSort(column: string) {
+    if (this.sortColumn() === column) {
+      this.sortAscending.set(!this.sortAscending());
+    } else {
+      this.sortColumn.set(column);
+      this.sortAscending.set(true);
+    }
+  }
+
+  getSortIcon(column: string): string {
+    if (this.sortColumn() !== column) return '↕️';
+    return this.sortAscending() ? '🔼' : '🔽';
+  }
+
+  printAssetQR(asset: Asset) {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print QR Code - ${asset.name}</title>
+          <style>
+            body {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              height: 100vh;
+              margin: 0;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            }
+            .qr-card {
+              border: 2px solid #ccc;
+              padding: 24px;
+              border-radius: 12px;
+              text-align: center;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            img {
+              width: 200px;
+              height: 200px;
+              margin-bottom: 16px;
+            }
+            .asset-name {
+              font-size: 1.25rem;
+              font-weight: bold;
+              margin: 8px 0;
+            }
+            .asset-id {
+              font-family: monospace;
+              color: #666;
+            }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          <div class="qr-card">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${asset.id}" alt="QR" />
+            <div class="asset-name">${asset.name}</div>
+            <div class="asset-id">${asset.id}</div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   }
 }

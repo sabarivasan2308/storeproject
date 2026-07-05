@@ -69,6 +69,7 @@ export interface AuditLog {
 // Initial Mock Seed Data
 const SEED_USERS: AppUser[] = [
   { email: 'super@kare.edu', name: 'Dr. Suresh Kumar', role: 'Super Admin', institution: 'All' },
+  { email: 'kare@kare.edu', name: 'Mr. Rajesh Kannan', role: 'School Admin', institution: 'KARE' },
   { email: 'akcp@kare.edu', name: 'Prof. Ramesh Patel', role: 'School Admin', institution: 'AKCP' },
   { email: 'linga@kare.edu', name: 'Sister Mary Joseph', role: 'School Admin', institution: 'LINGA Global School' },
   { email: 'akcas@kare.edu', name: 'Dr. Anjali Verma', role: 'School Admin', institution: 'AKCAS' },
@@ -732,7 +733,7 @@ export class MockDatabase {
     if (storedUsers) {
       try {
         const users = JSON.parse(storedUsers);
-        if (Array.isArray(users) && (!users.some(u => u.email === 'cshm@kare.edu') || !users.some(u => u.email === 'akbed@kare.edu'))) {
+        if (Array.isArray(users) && (!users.some(u => u.email === 'cshm@kare.edu') || !users.some(u => u.email === 'akbed@kare.edu') || !users.some(u => u.email === 'kare@kare.edu'))) {
           needsReset = true;
         }
       } catch (e) {
