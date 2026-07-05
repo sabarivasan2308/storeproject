@@ -1,5 +1,5 @@
 const endpoint = process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1';
-const project = process.env.APPWRITE_PROJECT_ID || '6a34f13000199b2e511f';
+const project = process.env.APPWRITE_PROJECT_ID || 'kare-store-project';
 const key = process.env.APPWRITE_API_KEY;
 const databaseId = process.env.APPWRITE_DATABASE_ID || 'kare-db';
 
@@ -9,6 +9,7 @@ if (!key) {
 }
 
 const permissions = ['read("users")', 'create("users")', 'update("users")', 'delete("users")'];
+const documentPermissions = ['read("users")', 'update("users")', 'delete("users")'];
 const schoolSeeds = [
   { id: 'kare', name: 'KARE', code: 'KARE', prefix: 'kare', email: 'kare@kare.edu' },
   { id: 'akcp', name: 'AKCP', code: 'AKCP', prefix: 'akcp', email: 'akcp@kare.edu' },
@@ -188,6 +189,19 @@ async function ensureCollection(collectionId, name = collectionId) {
   throw new Error(`Collection ${collectionId}: ${result.status} ${JSON.stringify(result.data)}`);
 }
 
+async function ensureDatabase() {
+  const existing = await request('GET', `/databases/${databaseId}`);
+  if (existing.ok) return 'exists';
+  const created = await request('POST', '/databases', {
+    databaseId,
+    name: 'KARE Store Database',
+    enabled: true
+  });
+  if (created.ok) return 'created';
+  if (created.status === 409) return 'exists';
+  throw new Error(`Database ${databaseId}: ${created.status} ${JSON.stringify(created.data)}`);
+}
+
 async function ensureAttribute(collectionId, attribute) {
   const [type, keyName, size, required] = attribute;
   let path = `/databases/${databaseId}/collections/${collectionId}/attributes/${type}`;
@@ -209,7 +223,7 @@ async function ensureDocument(collectionId, documentId, data) {
   const createResult = await request('POST', `/databases/${databaseId}/collections/${collectionId}/documents`, {
     documentId,
     data,
-    permissions
+    permissions: documentPermissions
   });
   if (createResult.ok) return 'created';
   if (createResult.status === 409) return 'exists';
@@ -253,11 +267,15 @@ async function collectVendorNames() {
 
 async function main() {
   const summary = {
+    database: null,
     collectionsCreated: [],
     attributesCreated: [],
     documentsCreatedOrUpdated: [],
     bucket: null
   };
+
+  summary.database = await ensureDatabase();
+  if (summary.database === 'created') await sleep(1000);
 
   for (const school of schoolSeeds) {
     for (const [kind, schema] of Object.entries(collectionSchemas)) {
@@ -293,7 +311,8 @@ async function main() {
   }
 
   for (const school of schoolSeeds) {
-    const status = await ensureDocument('master_schools', school.id, { ...school, active: true });
+    const { id, ...schoolData } = school;
+    const status = await ensureDocument('master_schools', id, { ...schoolData, active: true });
     summary.documentsCreatedOrUpdated.push(`master_schools.${school.id}:${status}`);
   }
   for (const name of categorySeeds) {
