@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AppwriteService } from '../../core/services/appwrite.service';
-import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/services/mock-db';
+import { Asset, Location, VerificationRequest } from '../../core/models/types';
 
 @Component({
   selector: 'app-school-admin',
@@ -55,12 +55,7 @@ import { MockDatabase, Asset, Location, VerificationRequest } from '../../core/s
 
       <!-- Main Panel Area -->
       <main class="main-content">
-        <!-- TOP ALERT BAR -->
-        @if (isMockActive()) {
-          <div class="mock-alert-bar">
-            <span>💡</span> Currently running in <strong>Interactive Demo (LocalStorage) Mode</strong>. Setup Appwrite Project ID in config to connect to a live backend.
-          </div>
-        }
+
 
         <!-- 1. OVERVIEW DASHBOARD -->
         @if (activeTab() === 'overview') {
@@ -1392,10 +1387,9 @@ export class SchoolAdminComponent implements OnInit {
     // or Appwrite database directly with a flag, or have the Super Admin manually input the details.
     // To make it fully self-contained, we can save the asset directly with 'Missing' status or create a request.
     // Let's create the request, and inside MockDatabase we save it as a pending asset inside local storage so Super Admin can auto-approve.
-    const assets = MockDatabase.getAssets();
     this.proposeAsset.status = 'Missing'; // Set inactive or missing until approved
     this.proposeAsset.remarks = `Proposed by ${this.userName()}. Approval Pending. ` + this.proposeReason;
-    MockDatabase.addAsset(this.proposeAsset);
+    await this.appwriteService.addAsset(this.proposeAsset);
 
     alert('Asset addition proposal submitted to Super Admin successfully.');
     this.showAddAssetModal.set(false);

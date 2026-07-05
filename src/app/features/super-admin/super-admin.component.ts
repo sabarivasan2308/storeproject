@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AppwriteService } from '../../core/services/appwrite.service';
-import { Asset, Location, VerificationRequest, AuditLog } from '../../core/services/mock-db';
+import { Asset, Location, VerificationRequest, AuditLog } from '../../core/models/types';
 
 @Component({
   selector: 'app-super-admin',
@@ -55,12 +55,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/servi
 
       <!-- Main Panel Area -->
       <main class="main-content">
-        <!-- TOP ALERT BAR FOR MOCK FALLBACK -->
-        @if (isMockActive()) {
-          <div class="mock-alert-bar">
-            <span>💡</span> Currently running in <strong>Interactive Demo (LocalStorage) Mode</strong>. Setup Appwrite Project ID in config to connect to a live backend.
-          </div>
-        }
+
 
         <!-- 1. OVERVIEW DASHBOARD -->
         @if (activeTab() === 'overview') {
