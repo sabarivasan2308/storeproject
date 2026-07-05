@@ -114,74 +114,6 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
               </div>
             </div>
 
-            <!-- Dashboard Charts -->
-            <div class="dashboard-charts-container">
-              <!-- Left Chart: Category Distribution -->
-              <div class="glass-panel chart-card">
-                <h3 class="chart-title">Category Value Allocation</h3>
-                @if (chartSectors().length > 0) {
-                  <div class="donut-chart-wrapper">
-                    <svg viewBox="0 0 200 200" class="donut-svg">
-                      @for (sector of chartSectors(); track sector.name) {
-                        <circle
-                          cx="100"
-                          cy="100"
-                          r="50"
-                          fill="transparent"
-                          [attr.stroke]="sector.color"
-                          stroke-width="18"
-                          [attr.stroke-dasharray]="sector.strokeDasharray"
-                          [attr.stroke-dashoffset]="sector.strokeDashoffset"
-                          transform="rotate(-90 100 100)"
-                          class="donut-segment"
-                        />
-                      }
-                      <circle cx="100" cy="100" r="40" fill="var(--bg-secondary)"></circle>
-                      <g class="donut-text">
-                        <text x="50%" y="48%" text-anchor="middle" class="donut-text-val">₹{{ totalAssetValue() | number }}</text>
-                        <text x="50%" y="58%" text-anchor="middle" class="donut-text-label">Total Value</text>
-                      </g>
-                    </svg>
-                    
-                    <div class="chart-legend">
-                      @for (sector of chartSectors(); track sector.name) {
-                        <div class="legend-item">
-                          <span class="legend-dot" [style.background-color]="sector.color"></span>
-                          <span class="legend-label">{{ sector.name }}</span>
-                          <span class="legend-pct">{{ sector.percentage }}%</span>
-                          <span class="legend-val">₹{{ sector.value | number }}</span>
-                        </div>
-                      }
-                    </div>
-                  </div>
-                } @else {
-                  <div class="empty-chart-state">No asset data available for visualization</div>
-                }
-              </div>
-
-              <!-- Right Chart: Status Distribution -->
-              <div class="glass-panel chart-card">
-                <h3 class="chart-title">Asset Status Distribution</h3>
-                @if (statusDistribution().length > 0) {
-                  <div class="bar-chart-wrapper">
-                    @for (status of statusDistribution(); track status.name) {
-                      <div class="bar-row">
-                        <div class="bar-info">
-                          <span class="bar-label">{{ status.name }}</span>
-                          <span class="bar-value">{{ status.count }} items ({{ status.percentage }}%)</span>
-                        </div>
-                        <div class="bar-progress-bg">
-                          <div class="bar-progress-fill" [style.width.%]="status.percentage" [style.background-color]="status.color"></div>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                } @else {
-                  <div class="empty-chart-state">No status distribution data available</div>
-                }
-              </div>
-            </div>
-
             <!-- Categories Breakdown -->
             <div class="glass-panel breakdown-panel">
               <h2 class="display-header section-title">Category-wise Asset Summary</h2>
@@ -499,56 +431,16 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
           <div class="tab-content fade-in">
             <h1 class="display-header page-heading">{{ institutionName() }} Inventory Reports</h1>
 
-            <div class="glass-panel filter-bar" style="flex-wrap: wrap; gap: 16px;">
-              <div class="filter-group" style="min-width: 150px;">
+            <div class="glass-panel filter-bar">
+              <div class="filter-group">
                 <label class="form-label">Report Type</label>
                 <select class="form-input" [(ngModel)]="reportType">
                   <option value="summary">Full Inventory Details</option>
-                  <option value="damaged">Service & Condemned List</option>
-                  <option value="missing">Missing Assets List</option>
+                  <option value="damaged">Service & Condemned list</option>
+                  <option value="missing">Missing Assets list</option>
                 </select>
               </div>
-              <div class="filter-group" style="min-width: 150px;">
-                <label class="form-label">Category</label>
-                <select class="form-input" [ngModel]="reportCategory()" (ngModelChange)="reportCategory.set($event)">
-                  <option value="All">All Categories</option>
-                  @for (cat of categoryList(); track cat) {
-                    <option [value]="cat">{{ cat }}</option>
-                  }
-                </select>
-              </div>
-              @if (reportType === 'summary') {
-                <div class="filter-group" style="min-width: 120px;">
-                  <label class="form-label">Status</label>
-                  <select class="form-input" [ngModel]="reportStatus()" (ngModelChange)="reportStatus.set($event)">
-                    <option value="All">All Statuses</option>
-                    <option value="Active">Active</option>
-                    <option value="Idle">Idle</option>
-                    <option value="Under Service">Under Service</option>
-                    <option value="Damaged">Damaged</option>
-                    <option value="Missing">Missing</option>
-                    <option value="Condemned">Condemned</option>
-                  </select>
-                </div>
-              }
-              <div class="filter-group" style="min-width: 150px;">
-                <label class="form-label">Room / Location</label>
-                <select class="form-input" [ngModel]="reportLocation()" (ngModelChange)="reportLocation.set($event)">
-                  <option value="All">All Locations</option>
-                  @for (loc of locations(); track loc.id) {
-                    <option [value]="loc.id">{{ loc.building }} - {{ loc.room }}</option>
-                  }
-                </select>
-              </div>
-              <div class="filter-group" style="min-width: 130px;">
-                <label class="form-label">Start Purchase Date</label>
-                <input type="date" class="form-input" [ngModel]="reportStartDate()" (ngModelChange)="reportStartDate.set($event)" />
-              </div>
-              <div class="filter-group" style="min-width: 130px;">
-                <label class="form-label">End Purchase Date</label>
-                <input type="date" class="form-input" [ngModel]="reportEndDate()" (ngModelChange)="reportEndDate.set($event)" />
-              </div>
-              <button class="btn btn-primary" style="align-self: flex-end; height: 40px;" (click)="printReport()">
+              <button class="btn btn-primary" (click)="printReport()">
                 Print / Save PDF Report 🖨️
               </button>
             </div>
@@ -1022,133 +914,9 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
       font-weight: 600;
       color: var(--text-primary);
     }
-    .modal-email {
+    .user-email {
       font-size: 0.8rem;
       color: var(--text-muted);
-    }
-    .dashboard-charts-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-      gap: 24px;
-      margin-bottom: 24px;
-    }
-    .chart-card {
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .chart-title {
-      font-family: var(--font-display);
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-    .donut-chart-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      flex-wrap: wrap;
-    }
-    .donut-svg {
-      width: 160px;
-      height: 160px;
-      flex-shrink: 0;
-    }
-    .donut-segment {
-      transition: stroke-width var(--transition-fast), filter var(--transition-fast);
-      cursor: pointer;
-    }
-    .donut-segment:hover {
-      stroke-width: 21;
-      filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.2));
-    }
-    .donut-text-val {
-      fill: var(--text-primary);
-      font-size: 14px;
-      font-weight: 700;
-      font-family: var(--font-display);
-    }
-    .donut-text-label {
-      fill: var(--text-muted);
-      font-size: 10px;
-      font-weight: 500;
-    }
-    .chart-legend {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      flex-grow: 1;
-      min-width: 180px;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.85rem;
-      position: relative;
-    }
-    .legend-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .legend-label {
-      color: var(--text-secondary);
-      flex-grow: 1;
-    }
-    .legend-pct {
-      color: var(--text-muted);
-      margin-right: 8px;
-    }
-    .legend-val {
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-    .bar-chart-wrapper {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .bar-row {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .bar-info {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.82rem;
-    }
-    .bar-label {
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-    .bar-value {
-      color: var(--text-primary);
-      font-weight: 600;
-    }
-    .bar-progress-bg {
-      height: 8px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-    .bar-progress-fill {
-      height: 100%;
-      border-radius: 4px;
-      transition: width var(--transition-normal) ease;
-    }
-    .empty-chart-state {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 160px;
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      border: 1px dashed var(--glass-border);
-      border-radius: 8px;
     }
     .btn-logout {
       width: 100%;
@@ -1606,12 +1374,6 @@ export class SchoolAdminComponent implements OnInit {
 
   // Reports
   reportType = 'summary';
-  reportCategory = signal<string>('All');
-  reportStatus = signal<string>('All');
-  reportLocation = signal<string>('All');
-  reportStartDate = signal<string>('');
-  reportEndDate = signal<string>('');
-
   reportTitle = computed(() => {
     switch (this.reportType) {
       case 'summary': return 'Comprehensive Campus Inventory Audit';
@@ -1681,70 +1443,6 @@ export class SchoolAdminComponent implements OnInit {
   condemnedAssetsCount = computed(() => this.assets().filter(a => a.status === 'Condemned').reduce((acc, a) => acc + a.quantity, 0));
   damagedAssetsCount = computed(() => this.assets().filter(a => a.status === 'Damaged').reduce((acc, a) => acc + a.quantity, 0));
   pendingRequestsCount = computed(() => this.institutionRequests().filter(r => r.status === 'Pending').length);
-
-  chartSectors = computed(() => {
-    const summaries = this.categorySummaries();
-    const totalVal = this.totalAssetValue();
-    if (totalVal === 0) return [];
-    
-    let accumulatedPercent = 0;
-    return summaries.map((cat, index) => {
-      const percentage = cat.value / totalVal;
-      const strokeDasharray = `${percentage * 314.16} 314.16`;
-      const strokeDashoffset = `${-accumulatedPercent * 314.16}`;
-      accumulatedPercent += percentage;
-      
-      const colors = [
-        '#a78bfa', // Purple
-        '#38bdf8', // Light Blue
-        '#34d399', // Green
-        '#fb923c', // Orange
-        '#f472b6', // Pink
-        '#60a5fa', // Blue
-        '#fb7185', // Coral
-        '#2dd4bf'  // Teal
-      ];
-      const color = colors[index % colors.length];
-      
-      return {
-        name: cat.name,
-        percentage: Math.round(percentage * 100),
-        value: cat.value,
-        strokeDasharray,
-        strokeDashoffset,
-        color
-      };
-    });
-  });
-
-  statusDistribution = computed(() => {
-    const assets = this.assets();
-    const total = this.totalAssetsCount();
-    if (total === 0) return [];
-    
-    const statuses = ['Active', 'Idle', 'Under Service', 'Damaged', 'Missing', 'Condemned'];
-    return statuses.map((status) => {
-      const count = assets.filter(a => a.status === status).reduce((acc, a) => acc + a.quantity, 0);
-      const percentage = (count / total) * 100;
-      
-      const colors = {
-        'Active': '#34d399',       // Green
-        'Idle': '#60a5fa',         // Blue
-        'Under Service': '#2dd4bf', // Teal
-        'Damaged': '#fb923c',      // Orange
-        'Missing': '#fb7185',      // Coral
-        'Condemned': '#f87171'     // Red
-      };
-      const color = colors[status as keyof typeof colors] || '#9ca3af';
-      
-      return {
-        name: status,
-        count,
-        percentage: Math.round(percentage),
-        color
-      };
-    });
-  });
 
   institutionLocations = () => this.locations();
   institutionRequests = () => this.requests().slice().reverse(); // Newest first
@@ -2026,41 +1724,13 @@ export class SchoolAdminComponent implements OnInit {
 
   // Reporting
   reportAssets = computed(() => {
-    let list = this.assets();
-    
-    // Type Filter
     if (this.reportType === 'damaged') {
-      list = list.filter(a => a.status === 'Under Service' || a.status === 'Condemned' || a.status === 'Damaged');
-    } else if (this.reportType === 'missing') {
-      list = list.filter(a => a.status === 'Missing');
+      return this.assets().filter(a => a.status === 'Under Service' || a.status === 'Condemned' || a.status === 'Damaged');
     }
-    
-    // Category Filter
-    if (this.reportCategory() !== 'All') {
-      list = list.filter(a => a.category === this.reportCategory());
+    if (this.reportType === 'missing') {
+      return this.assets().filter(a => a.status === 'Missing');
     }
-    
-    // Status Filter (only active if not already scoped by Type)
-    if (this.reportType === 'summary' && this.reportStatus() !== 'All') {
-      list = list.filter(a => a.status === this.reportStatus());
-    }
-    
-    // Location Filter
-    if (this.reportLocation() !== 'All') {
-      list = list.filter(a => a.locationId === this.reportLocation() || a.locationText?.includes(this.reportLocation()));
-    }
-    
-    // Date Range Filter
-    if (this.reportStartDate()) {
-      const start = new Date(this.reportStartDate()).getTime();
-      list = list.filter(a => a.purchaseDate && new Date(a.purchaseDate).getTime() >= start);
-    }
-    if (this.reportEndDate()) {
-      const end = new Date(this.reportEndDate()).getTime();
-      list = list.filter(a => a.purchaseDate && new Date(a.purchaseDate).getTime() <= end);
-    }
-    
-    return list;
+    return this.assets();
   });
 
   printReport() {
