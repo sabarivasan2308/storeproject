@@ -59,6 +59,18 @@ const locationSeeds = [
   { id: 'LOC-KMCH-001', institution: 'KMCH', building: 'Hospital Block', floor: 'Ground Floor', department: 'Emergency Ward', room: 'ER-001' }
 ];
 
+const userSeeds = [
+  { id: 'super', email: 'super@kare.edu', name: 'Dr. Suresh Kumar', role: 'Super Admin', institution: 'KARE', teamId: 'super_admin' },
+  ...schoolSeeds.map(school => ({
+    id: school.prefix,
+    email: school.email,
+    name: `${school.code} Admin`,
+    role: 'School Admin',
+    institution: school.name,
+    teamId: `school_${school.prefix}`
+  }))
+];
+
 const baseAssetAttributes = [
   ['string', 'id', 255, true],
   ['string', 'name', 255, true],
@@ -123,6 +135,12 @@ const collectionSchemas = {
 };
 
 const masterSchemas = {
+  users: [
+    ['string', 'email', 255, true],
+    ['string', 'name', 255, true],
+    ['string', 'role', 255, true],
+    ['string', 'institution', 255, true]
+  ],
   master_schools: [
     ['string', 'name', 255, true],
     ['string', 'code', 64, true],
@@ -230,6 +248,55 @@ async function ensureDocument(collectionId, documentId, data) {
   throw new Error(`Document ${collectionId}.${documentId}: ${createResult.status} ${JSON.stringify(createResult.data)}`);
 }
 
+async function ensureAuthUser(user) {
+  const existing = await request('GET', `/users/${user.id}`);
+  if (existing.ok) {
+    await request('PATCH', `/users/${user.id}/name`, { name: user.name });
+    const passwordResult = await request('PATCH', `/users/${user.id}/password`, { password: 'password123' });
+    if (!passwordResult.ok) {
+      throw new Error(`Password ${user.id}: ${passwordResult.status} ${JSON.stringify(passwordResult.data)}`);
+    }
+    return 'updated';
+  }
+
+  const created = await request('POST', '/users', {
+    userId: user.id,
+    email: user.email,
+    password: 'password123',
+    name: user.name
+  });
+  if (created.ok) return 'created';
+  if (created.status === 409) return 'exists';
+  throw new Error(`Auth user ${user.id}: ${created.status} ${JSON.stringify(created.data)}`);
+}
+
+async function ensureTeam(teamId, name) {
+  const existing = await request('GET', `/teams/${teamId}`);
+  if (existing.ok) return 'exists';
+  const created = await request('POST', '/teams', {
+    teamId,
+    name
+  });
+  if (created.ok) return 'created';
+  if (created.status === 409) return 'exists';
+  throw new Error(`Team ${teamId}: ${created.status} ${JSON.stringify(created.data)}`);
+}
+
+async function ensureMembership(teamId, user) {
+  const memberships = await request('GET', `/teams/${teamId}/memberships`);
+  if (memberships.ok && (memberships.data.memberships || []).some(m => m.userId === user.id || m.userEmail === user.email)) {
+    return 'exists';
+  }
+
+  const created = await request('POST', `/teams/${teamId}/memberships`, {
+    userId: user.id,
+    roles: [user.role === 'Super Admin' ? 'super_admin' : 'school_admin']
+  });
+  if (created.ok) return 'created';
+  if (created.status === 409) return 'exists';
+  throw new Error(`Membership ${teamId}.${user.id}: ${created.status} ${JSON.stringify(created.data)}`);
+}
+
 async function ensureBucket() {
   const existing = await request('GET', '/storage/buckets/asset-attachments');
   if (existing.ok) return 'exists';
@@ -271,6 +338,9 @@ async function main() {
     collectionsCreated: [],
     attributesCreated: [],
     documentsCreatedOrUpdated: [],
+    authUsers: [],
+    teams: [],
+    memberships: [],
     bucket: null
   };
 
@@ -308,6 +378,22 @@ async function main() {
         await sleep(250);
       }
     }
+  }
+
+  for (const user of userSeeds) {
+    const userStatus = await ensureAuthUser(user);
+    summary.authUsers.push(`${user.id}:${userStatus}`);
+    const teamStatus = await ensureTeam(user.teamId, user.role === 'Super Admin' ? 'Super Admin' : `${user.institution} Admins`);
+    summary.teams.push(`${user.teamId}:${teamStatus}`);
+    const membershipStatus = await ensureMembership(user.teamId, user);
+    summary.memberships.push(`${user.teamId}.${user.id}:${membershipStatus}`);
+    const profileStatus = await ensureDocument('users', user.id, {
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      institution: user.institution
+    });
+    summary.documentsCreatedOrUpdated.push(`users.${user.id}:${profileStatus}`);
   }
 
   for (const school of schoolSeeds) {
