@@ -1632,6 +1632,10 @@ export class SchoolAdminComponent implements OnInit {
     this.proposeAsset.totalPrice = this.proposeAsset.quantity * this.proposeAsset.unitPrice;
     this.proposeAsset.qrCode = this.proposeAsset.id;
     this.proposeAsset.barcode = 'BAR-' + this.proposeAsset.id;
+    this.proposeAsset.status = 'Missing'; // Set inactive or missing until approved
+    this.proposeAsset.remarks = `Proposed by ${this.userName()}. Approval Pending. ` + this.proposeReason;
+
+    await this.appwriteService.addProposedAsset(this.proposeAsset);
 
     // Submit to approval requests queue
     await this.appwriteService.submitRequest({
@@ -1645,19 +1649,6 @@ export class SchoolAdminComponent implements OnInit {
       newValue: `ID: ${this.proposeAsset.id}, Qty: ${this.proposeAsset.quantity}, Value: ₹${this.proposeAsset.totalPrice}`,
       reason: this.proposeReason
     });
-
-    // In a mock environment we append directly but label as pending addition, 
-    // or just let it create a request. To let Super Admin trigger addition:
-    // We add the actual record as "Pending addition" status or just let Super Admin create the asset when approved.
-    // The design is: Super Admin approves the request, and the asset is created.
-    // So we just add it to the pending request queue!
-    // But since Appwrite databases will need to save the draft proposed asset, we can store it in localStorage 
-    // or Appwrite database directly with a flag, or have the Super Admin manually input the details.
-    // To make it fully self-contained, we can save the asset directly with 'Missing' status or create a request.
-    // Let's create the request, and inside MockDatabase we save it as a pending asset inside local storage so Super Admin can auto-approve.
-    this.proposeAsset.status = 'Missing'; // Set inactive or missing until approved
-    this.proposeAsset.remarks = `Proposed by ${this.userName()}. Approval Pending. ` + this.proposeReason;
-    await this.appwriteService.addAsset(this.proposeAsset);
 
     alert('Asset addition proposal submitted to Super Admin successfully.');
     this.showAddAssetModal.set(false);

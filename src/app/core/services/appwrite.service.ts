@@ -193,6 +193,69 @@ export class AppwriteService {
     };
   }
 
+  private mapAssetDocument(d: any, locs: Location[]): Asset {
+    const asset: Asset = {
+      id: d['id'],
+      name: d['name'],
+      category: d['category'],
+      barcode: d['barcode'] || '',
+      qrCode: d['qrCode'] || '',
+      brand: d['brand'] || '',
+      model: d['model'] || '',
+      serialNumber: d['serialNumber'] || '',
+      quantity: d['quantity'],
+      unitPrice: d['unitPrice'],
+      totalPrice: d['totalPrice'],
+      purchaseDate: d['purchaseDate'] || '',
+      purchaseOrder: d['purchaseOrder'] || '',
+      billNumber: d['billNumber'] || '',
+      billDate: d['billDate'] || '',
+      vendor: d['vendor'] || '',
+      warrantyDetails: d['warrantyDetails'] || '',
+      status: d['status'],
+      remarks: d['remarks'] || '',
+      locationId: d['locationId'],
+      containerId: d['containerId'] || undefined,
+      isContainer: d['isContainer'] || false
+    };
+    const loc = locs.find(l => l.id === asset.locationId);
+    if (loc) {
+      asset.locationText = `${loc.institution} -> ${loc.building} -> ${loc.floor} -> ${loc.department} -> ${loc.room}`;
+    }
+    return asset;
+  }
+
+  private isPendingAddition(asset: Asset): boolean {
+    return asset.remarks.includes('Approval Pending.');
+  }
+
+  private createAssetDocumentData(asset: Asset) {
+    return {
+      id: asset.id,
+      name: asset.name,
+      category: asset.category,
+      barcode: asset.barcode || '',
+      qrCode: asset.qrCode || '',
+      brand: asset.brand || '',
+      model: asset.model || '',
+      serialNumber: asset.serialNumber || '',
+      quantity: asset.quantity,
+      unitPrice: asset.unitPrice,
+      totalPrice: asset.totalPrice,
+      purchaseDate: asset.purchaseDate || '',
+      purchaseOrder: asset.purchaseOrder || '',
+      billNumber: asset.billNumber || '',
+      billDate: asset.billDate || '',
+      vendor: asset.vendor || '',
+      warrantyDetails: asset.warrantyDetails || '',
+      status: asset.status,
+      remarks: asset.remarks || '',
+      locationId: asset.locationId,
+      containerId: asset.containerId || '',
+      isContainer: asset.isContainer || false
+    };
+  }
+
   // Location Operations
   async getLocations(): Promise<Location[]> {
     const user = this.currentUser();
@@ -277,37 +340,9 @@ export class AppwriteService {
               `${prefix}_${itemType}`,
               [Query.limit(100)]
             );
-            return response.documents.map(d => {
-              const a: Asset = {
-                id: d['id'],
-                name: d['name'],
-                category: d['category'],
-                barcode: d['barcode'] || '',
-                qrCode: d['qrCode'] || '',
-                brand: d['brand'] || '',
-                model: d['model'] || '',
-                serialNumber: d['serialNumber'] || '',
-                quantity: d['quantity'],
-                unitPrice: d['unitPrice'],
-                totalPrice: d['totalPrice'],
-                purchaseDate: d['purchaseDate'] || '',
-                purchaseOrder: d['purchaseOrder'] || '',
-                billNumber: d['billNumber'] || '',
-                billDate: d['billDate'] || '',
-                vendor: d['vendor'] || '',
-                warrantyDetails: d['warrantyDetails'] || '',
-                status: d['status'],
-                remarks: d['remarks'] || '',
-                locationId: d['locationId'],
-                containerId: d['containerId'] || undefined,
-                isContainer: d['isContainer'] || false
-              };
-              const loc = locs.find(l => l.id === a.locationId);
-              if (loc) {
-                a.locationText = `${loc.institution} -> ${loc.building} -> ${loc.floor} -> ${loc.department} -> ${loc.room}`;
-              }
-              return a;
-            });
+            return response.documents
+              .map(d => this.mapAssetDocument(d, locs))
+              .filter(asset => !this.isPendingAddition(asset));
           } catch (e) {
             console.error(`Error fetching assets for ${prefix}_${itemType}:`, e);
             return [];
@@ -325,30 +360,7 @@ export class AppwriteService {
     const locs = await this.getLocations();
     const { collId } = this.getAssetCollectionInfo(asset, locs);
     
-    const docData = {
-      id: asset.id,
-      name: asset.name,
-      category: asset.category,
-      barcode: asset.barcode || '',
-      qrCode: asset.qrCode || '',
-      brand: asset.brand || '',
-      model: asset.model || '',
-      serialNumber: asset.serialNumber || '',
-      quantity: asset.quantity,
-      unitPrice: asset.unitPrice,
-      totalPrice: asset.totalPrice,
-      purchaseDate: asset.purchaseDate || '',
-      purchaseOrder: asset.purchaseOrder || '',
-      billNumber: asset.billNumber || '',
-      billDate: asset.billDate || '',
-      vendor: asset.vendor || '',
-      warrantyDetails: asset.warrantyDetails || '',
-      status: asset.status,
-      remarks: asset.remarks || '',
-      locationId: asset.locationId,
-      containerId: asset.containerId || '',
-      isContainer: asset.isContainer || false
-    };
+    const docData = this.createAssetDocumentData(asset);
     
     await this.databases.createDocument(
       APPWRITE_CONFIG.DATABASE_ID,
@@ -370,35 +382,35 @@ export class AppwriteService {
     }
   }
 
+  async addProposedAsset(asset: Asset): Promise<void> {
+    const locs = await this.getLocations();
+    const { collId } = this.getAssetCollectionInfo(asset, locs);
+    
+    await this.databases.createDocument(
+      APPWRITE_CONFIG.DATABASE_ID,
+      collId,
+      asset.id,
+      this.createAssetDocumentData(asset)
+    );
+  }
+
+  async deleteProposedAsset(asset: Asset): Promise<void> {
+    const locs = await this.getLocations();
+    const { collId } = this.getAssetCollectionInfo(asset, locs);
+    
+    await this.databases.deleteDocument(
+      APPWRITE_CONFIG.DATABASE_ID,
+      collId,
+      asset.id
+    );
+  }
+
   async updateAsset(asset: Asset): Promise<void> {
     const user = this.currentUser();
     const locs = await this.getLocations();
     const { collId } = this.getAssetCollectionInfo(asset, locs);
     
-    const docData = {
-      id: asset.id,
-      name: asset.name,
-      category: asset.category,
-      barcode: asset.barcode || '',
-      qrCode: asset.qrCode || '',
-      brand: asset.brand || '',
-      model: asset.model || '',
-      serialNumber: asset.serialNumber || '',
-      quantity: asset.quantity,
-      unitPrice: asset.unitPrice,
-      totalPrice: asset.totalPrice,
-      purchaseDate: asset.purchaseDate || '',
-      purchaseOrder: asset.purchaseOrder || '',
-      billNumber: asset.billNumber || '',
-      billDate: asset.billDate || '',
-      vendor: asset.vendor || '',
-      warrantyDetails: asset.warrantyDetails || '',
-      status: asset.status,
-      remarks: asset.remarks || '',
-      locationId: asset.locationId,
-      containerId: asset.containerId || '',
-      isContainer: asset.isContainer || false
-    };
+    const docData = this.createAssetDocumentData(asset);
     
     let existingCollId = collId;
     const allColls = ['assets', 'consumables', 'furniture'];
@@ -473,30 +485,7 @@ export class AppwriteService {
             id
           );
           foundCollId = testColl;
-          asset = {
-            id: d['id'],
-            name: d['name'],
-            category: d['category'],
-            barcode: d['barcode'] || '',
-            qrCode: d['qrCode'] || '',
-            brand: d['brand'] || '',
-            model: d['model'] || '',
-            serialNumber: d['serialNumber'] || '',
-            quantity: d['quantity'],
-            unitPrice: d['unitPrice'],
-            totalPrice: d['totalPrice'],
-            purchaseDate: d['purchaseDate'] || '',
-            purchaseOrder: d['purchaseOrder'] || '',
-            billNumber: d['billNumber'] || '',
-            billDate: d['billDate'] || '',
-            vendor: d['vendor'] || '',
-            warrantyDetails: d['warrantyDetails'] || '',
-            status: d['status'],
-            remarks: d['remarks'] || '',
-            locationId: d['locationId'],
-            containerId: d['containerId'] || undefined,
-            isContainer: d['isContainer'] || false
-          };
+          asset = this.mapAssetDocument(d, []);
           break;
         } catch {}
       }
@@ -634,10 +623,11 @@ export class AppwriteService {
         { status, comments }
       );
       
+      const assetId = reqData['assetId'];
+      const changeType = reqData['changeType'];
+      const newValue = reqData['newValue'];
+      
       if (approve) {
-        const assetId = reqData['assetId'];
-        const changeType = reqData['changeType'];
-        const newValue = reqData['newValue'];
         
         let foundAssetColl = '';
         let assetData: any = null;
@@ -685,6 +675,26 @@ export class AppwriteService {
             assetId,
             updatedAsset
           );
+        }
+      } else if (changeType === 'Add Asset') {
+        const allColls = ['assets', 'consumables', 'furniture'];
+        for (const type of allColls) {
+          const testAssetColl = `${foundPrefix}_${type}`;
+          try {
+            const d = await this.databases.getDocument(
+              APPWRITE_CONFIG.DATABASE_ID,
+              testAssetColl,
+              assetId
+            );
+            if ((d['remarks'] || '').includes('Approval Pending.')) {
+              await this.databases.deleteDocument(
+                APPWRITE_CONFIG.DATABASE_ID,
+                testAssetColl,
+                assetId
+              );
+            }
+            break;
+          } catch {}
         }
       }
       
