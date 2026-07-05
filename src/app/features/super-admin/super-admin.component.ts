@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AppwriteService } from '../../core/services/appwrite.service';
-import { Asset, Location, VerificationRequest, AuditLog } from '../../core/models/types';
+import { Asset, Location, VerificationRequest, AuditLog, MasterOption, School, Vendor } from '../../core/models/types';
 
 @Component({
   selector: 'app-super-admin',
@@ -192,7 +192,7 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/model
                 <label class="form-label">Institution</label>
                 <select class="form-input" [ngModel]="filterInstitution()" (ngModelChange)="filterInstitution.set($event)">
                   <option value="All">All Institutions</option>
-                  @for (inst of institutionList; track inst) {
+                  @for (inst of institutionList(); track inst) {
                     <option [value]="inst">{{ inst }}</option>
                   }
                 </select>
@@ -605,25 +605,17 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/model
                 <div class="form-group">
                   <label class="form-label">Category</label>
                   <select class="form-input" [(ngModel)]="editingAsset.category" name="category" required>
-                    <option value="Refrigerators">Refrigerators</option>
-                    <option value="Lab Reagents">Lab Reagents</option>
-                    <option value="Sample Kits">Sample Kits</option>
-                    <option value="Computers">Computers</option>
-                    <option value="Projectors">Projectors</option>
-                    <option value="Air Conditioners">Air Conditioners</option>
-                    <option value="Others">Others</option>
+                    @for (cat of categoryList(); track cat) {
+                      <option [value]="cat">{{ cat }}</option>
+                    }
                   </select>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Status</label>
                   <select class="form-input" [(ngModel)]="editingAsset.status" name="status" required>
-                    <option value="Idle">Idle</option>
-                    <option value="Active">Active</option>
-                    <option value="Under Service">Under Service</option>
-                    <option value="Transferred">Transferred</option>
-                    <option value="Missing">Missing</option>
-                    <option value="Condemned">Condemned</option>
-                    <option value="Damaged">Damaged</option>
+                    @for (status of statusList(); track status) {
+                      <option [value]="status">{{ status }}</option>
+                    }
                   </select>
                 </div>
               </div>
@@ -704,7 +696,12 @@ import { Asset, Location, VerificationRequest, AuditLog } from '../../core/model
               <div class="form-row-grid">
                 <div class="form-group">
                   <label class="form-label">Vendor</label>
-                  <input type="text" class="form-input" [(ngModel)]="editingAsset.vendor" name="vendor" placeholder="e.g. Acme Corp" />
+                  <select class="form-input" [(ngModel)]="editingAsset.vendor" name="vendor">
+                    <option value="">Select Vendor</option>
+                    @for (vendor of vendorList(); track vendor) {
+                      <option [value]="vendor">{{ vendor }}</option>
+                    }
+                  </select>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Warranty Details</label>
@@ -1384,6 +1381,10 @@ export class SuperAdminComponent implements OnInit {
     });
   });
   auditLogs = signal<AuditLog[]>([]);
+  schools = signal<School[]>([]);
+  masterCategories = signal<MasterOption[]>([]);
+  masterStatuses = signal<MasterOption[]>([]);
+  vendors = signal<Vendor[]>([]);
   isMockActive = signal<boolean>(true);
 
   // Sorting State
@@ -1402,8 +1403,15 @@ export class SuperAdminComponent implements OnInit {
   filterPO = signal<string>('');
   filterBillNumber = signal<string>('');
 
-  // Institution List constant
-  institutionList = ['KARE', 'LINGA Global School', 'AK B.Ed College', 'AKCP', 'AKCAS', 'KMCH', 'CSHM'];
+  institutionList = computed(() => this.schools().map(s => s.name));
+  statusList = computed(() => Array.from(new Set([
+    ...this.masterStatuses().map(s => s.name),
+    ...this.assets().map(a => a.status)
+  ])));
+  vendorList = computed(() => Array.from(new Set([
+    ...this.vendors().map(v => v.name),
+    ...this.assets().map(a => a.vendor).filter(Boolean)
+  ])));
 
   // Modals & Temp States
   showAssetModal = signal<boolean>(false);
@@ -1460,12 +1468,20 @@ export class SuperAdminComponent implements OnInit {
 
   async loadData() {
     try {
-      const [assetsData, locationsData, requestsData, logsData] = await Promise.all([
+      const [schoolsData, categoryData, statusData, vendorData, assetsData, locationsData, requestsData, logsData] = await Promise.all([
+        this.appwriteService.getSchools(),
+        this.appwriteService.getCategories(),
+        this.appwriteService.getStatuses(),
+        this.appwriteService.getVendors(),
         this.appwriteService.getAssets(),
         this.appwriteService.getLocations(),
         this.appwriteService.getRequests(),
         this.appwriteService.getAuditLogs()
       ]);
+      this.schools.set(schoolsData);
+      this.masterCategories.set(categoryData);
+      this.masterStatuses.set(statusData);
+      this.vendors.set(vendorData);
       this.assets.set(assetsData);
       this.locations.set(locationsData);
       this.requests.set(requestsData);
@@ -1481,7 +1497,7 @@ export class SuperAdminComponent implements OnInit {
   }
 
   // Dashboard Stats Computed States
-  uniqueInstitutionsCount = () => this.institutionList.length;
+  uniqueInstitutionsCount = () => this.institutionList().length;
   totalAssetsCount = computed(() => this.assets().reduce((acc, a) => acc + a.quantity, 0));
   totalAssetValue = computed(() => this.assets().reduce((acc, a) => acc + a.totalPrice, 0));
   idleAssetsCount = computed(() => this.assets().filter(a => a.status === 'Idle').reduce((acc, a) => acc + a.quantity, 0));
@@ -1492,7 +1508,7 @@ export class SuperAdminComponent implements OnInit {
   pendingRequestsCount = computed(() => this.requests().filter(r => r.status === 'Pending').length);
 
   institutionSummaries = computed(() => {
-    return this.institutionList.map(instName => {
+    return this.institutionList().map(instName => {
       const instAssets = this.assets().filter(a => a.locationText?.startsWith(instName));
       return {
         name: instName,
@@ -1507,7 +1523,7 @@ export class SuperAdminComponent implements OnInit {
   });
 
   categoryList = computed(() => {
-    const cats = this.assets().map(a => a.category);
+    const cats = [...this.masterCategories().map(c => c.name), ...this.assets().map(a => a.category)];
     return Array.from(new Set(cats));
   });
 
@@ -1569,7 +1585,7 @@ export class SuperAdminComponent implements OnInit {
     this.editingAsset = {
       id: '',
       name: '',
-      category: 'Lab Reagents',
+      category: this.categoryList()[0] || '',
       barcode: '',
       qrCode: '',
       brand: '',
@@ -1584,7 +1600,7 @@ export class SuperAdminComponent implements OnInit {
       billDate: '',
       vendor: '',
       warrantyDetails: '',
-      status: 'Active',
+      status: this.statusList().includes('Active') ? 'Active' : (this.statusList()[0] as Asset['status']) || 'Active',
       remarks: '',
       locationId: this.locations()[0]?.id || '',
       isContainer: false

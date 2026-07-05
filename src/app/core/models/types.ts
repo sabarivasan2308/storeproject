@@ -14,6 +14,34 @@ export interface Location {
   room: string;
 }
 
+export interface School {
+  id: string;
+  name: string;
+  code: string;
+  prefix: string;
+  email?: string;
+  active: boolean;
+}
+
+export interface MasterOption {
+  id: string;
+  name: string;
+  description?: string;
+  active: boolean;
+}
+
+export interface Vendor {
+  id: string;
+  name: string;
+  gst?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  paymentTerms?: string;
+  active: boolean;
+}
+
 export interface Asset {
   id: string; // Unique Asset ID
   name: string;

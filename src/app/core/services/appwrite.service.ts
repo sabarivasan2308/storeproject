@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { Client, Account, Databases, ID, Query, Teams } from 'appwrite';
 import { APPWRITE_CONFIG } from '../config/appwrite.config';
-import { AppUser, Asset, Location, VerificationRequest, AuditLog } from '../models/types';
+import { AppUser, Asset, Location, VerificationRequest, AuditLog, School, MasterOption, Vendor } from '../models/types';
 
 @Injectable({
   providedIn: 'root'
@@ -11,6 +11,7 @@ export class AppwriteService {
   private account!: Account;
   private databases!: Databases;
   private teams!: Teams;
+  private schoolCache: School[] = [];
   
   // State Signals
   isUsingMock = signal<boolean>(false);
@@ -51,7 +52,7 @@ export class AppwriteService {
               role = 'School Admin';
               const schoolTeam = teamIds.find(id => id.startsWith('school_'));
               if (schoolTeam) {
-                institution = schoolTeam.replace('school_', '').toUpperCase();
+                institution = await this.getInstitutionNameForPrefix(schoolTeam.replace('school_', ''));
               }
             }
           } catch (teamErr) {
@@ -66,7 +67,7 @@ export class AppwriteService {
               institution = userDoc['institution'];
             } catch {
               role = userSession.email.includes('super') ? 'Super Admin' : 'School Admin';
-              institution = 'AKCP';
+              institution = await this.getInstitutionNameForPrefix('akcp');
             }
           }
           
@@ -117,7 +118,7 @@ export class AppwriteService {
           role = 'School Admin';
           const schoolTeam = teamIds.find(id => id.startsWith('school_'));
           if (schoolTeam) {
-            institution = schoolTeam.replace('school_', '').toUpperCase();
+            institution = await this.getInstitutionNameForPrefix(schoolTeam.replace('school_', ''));
           }
         }
       } catch (teamErr) {
@@ -158,18 +159,147 @@ export class AppwriteService {
     }
   }
 
+  async getSchools(): Promise<School[]> {
+    try {
+      const response = await this.databases.listDocuments(
+        APPWRITE_CONFIG.DATABASE_ID,
+        'master_schools',
+        [Query.limit(100)]
+      );
+      const schools = response.documents
+        .map(d => ({
+          id: d.$id,
+          name: d['name'],
+          code: d['code'],
+          prefix: d['prefix'],
+          email: d['email'] || '',
+          active: d['active'] !== false
+        }))
+        .filter(s => s.active)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      this.schoolCache = schools;
+      return schools;
+    } catch (e) {
+      console.error('Error loading school master data:', e);
+      return this.getSchoolsFromUsers();
+    }
+  }
+
+  private async getSchoolsFromUsers(): Promise<School[]> {
+    try {
+      const response = await this.databases.listDocuments(
+        APPWRITE_CONFIG.DATABASE_ID,
+        APPWRITE_CONFIG.COLLECTIONS.USERS,
+        [Query.limit(100)]
+      );
+      const schoolMap = new Map<string, School>();
+      for (const d of response.documents) {
+        if (d['role'] !== 'School Admin') continue;
+        const name = d['institution'];
+        const prefix = (d['email'] || name).split('@')[0].toLowerCase().replace(/[^a-z0-9]+/g, '');
+        schoolMap.set(name, {
+          id: prefix,
+          name,
+          code: prefix.toUpperCase(),
+          prefix,
+          email: d['email'] || '',
+          active: true
+        });
+      }
+      const schools = Array.from(schoolMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+      this.schoolCache = schools;
+      return schools;
+    } catch (err) {
+      console.error('Error deriving school master data from users:', err);
+      return this.schoolCache;
+    }
+  }
+
+  async getCategories(): Promise<MasterOption[]> {
+    return this.getMasterOptions('master_categories');
+  }
+
+  async getStatuses(): Promise<MasterOption[]> {
+    return this.getMasterOptions('master_statuses');
+  }
+
+  async getVendors(): Promise<Vendor[]> {
+    try {
+      const response = await this.databases.listDocuments(
+        APPWRITE_CONFIG.DATABASE_ID,
+        'master_vendors',
+        [Query.limit(100)]
+      );
+      return response.documents
+        .map(d => ({
+          id: d.$id,
+          name: d['name'],
+          gst: d['gst'] || '',
+          address: d['address'] || '',
+          phone: d['phone'] || '',
+          email: d['email'] || '',
+          website: d['website'] || '',
+          paymentTerms: d['paymentTerms'] || '',
+          active: d['active'] !== false
+        }))
+        .filter(v => v.active)
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } catch (e) {
+      console.error('Error loading vendor master data:', e);
+      return [];
+    }
+  }
+
+  private async getMasterOptions(collectionId: string): Promise<MasterOption[]> {
+    try {
+      const response = await this.databases.listDocuments(
+        APPWRITE_CONFIG.DATABASE_ID,
+        collectionId,
+        [Query.limit(100)]
+      );
+      return response.documents
+        .map(d => ({
+          id: d.$id,
+          name: d['name'],
+          description: d['description'] || '',
+          active: d['active'] !== false
+        }))
+        .filter(o => o.active)
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } catch (e) {
+      console.error(`Error loading ${collectionId}:`, e);
+      return [];
+    }
+  }
+
+  private async getInstitutionNameForPrefix(prefix: string): Promise<string> {
+    const normalized = prefix.toLowerCase();
+    const schools = this.schoolCache.length ? this.schoolCache : await this.getSchools();
+    return schools.find(s => s.prefix.toLowerCase() === normalized)?.name || prefix.toUpperCase();
+  }
+
+  private async getSchoolPrefixesForScope(): Promise<string[]> {
+    const user = this.currentUser();
+    if (user && user.role === 'School Admin') {
+      return [this.getPrefixForInstitution(user.institution)];
+    }
+
+    const schools = await this.getSchools();
+    return schools.map(s => s.prefix);
+  }
+
   // Helper to determine prefix based on institution name
   private getPrefixForInstitution(inst?: string): string {
     const target = inst || this.currentUser()?.institution;
     if (!target) return 'kare';
     const name = target.toLowerCase();
-    if (name.includes('akcp')) return 'akcp';
-    if (name.includes('linga')) return 'linga';
-    if (name.includes('akcas')) return 'akcas';
-    if (name.includes('cshm')) return 'cshm';
-    if (name.includes('akbed') || name.includes('b.ed')) return 'akbed';
-    if (name.includes('kmch')) return 'kmch';
-    return 'kare';
+    const school = this.schoolCache.find(s =>
+      s.name.toLowerCase() === name ||
+      s.code.toLowerCase() === name ||
+      s.prefix.toLowerCase() === name
+    );
+    if (school) return school.prefix;
+    return name.replace(/[^a-z0-9]+/g, '').substring(0, 24) || 'kare';
   }
 
   // Helper to get collection information for an asset
@@ -260,6 +390,7 @@ export class AppwriteService {
   async getLocations(): Promise<Location[]> {
     const user = this.currentUser();
     if (user && user.role === 'School Admin') {
+      await this.getSchools();
       const prefix = this.getPrefixForInstitution(user.institution);
       const response = await this.databases.listDocuments(
         APPWRITE_CONFIG.DATABASE_ID,
@@ -267,7 +398,7 @@ export class AppwriteService {
         [Query.limit(100)]
       );
       return response.documents.map(d => ({
-        id: d.$id,
+        id: d['id'] || d.$id,
         institution: d['institution'],
         building: d['building'],
         floor: d['floor'],
@@ -275,7 +406,7 @@ export class AppwriteService {
         room: d['room']
       }));
     } else {
-      const prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
+      const prefixes = await this.getSchoolPrefixesForScope();
       const promises = prefixes.map(async prefix => {
         try {
           const response = await this.databases.listDocuments(
@@ -284,7 +415,7 @@ export class AppwriteService {
             [Query.limit(100)]
           );
           return response.documents.map(d => ({
-            id: d.$id,
+            id: d['id'] || d.$id,
             institution: d['institution'],
             building: d['building'],
             floor: d['floor'],
@@ -302,13 +433,15 @@ export class AppwriteService {
   }
 
   async addLocation(loc: Location): Promise<void> {
+    await this.getSchools();
     const prefix = this.getPrefixForInstitution(loc.institution);
+    const docId = loc.id || ID.unique();
     await this.databases.createDocument(
       APPWRITE_CONFIG.DATABASE_ID,
       `${prefix}_locations`,
-      ID.unique(),
+      docId,
       {
-        id: loc.id,
+        id: docId,
         institution: loc.institution,
         building: loc.building,
         floor: loc.floor,
@@ -323,7 +456,7 @@ export class AppwriteService {
     const user = this.currentUser();
     const locs = await this.getLocations();
     
-    let prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
+    let prefixes = await this.getSchoolPrefixesForScope();
     if (user && user.role === 'School Admin') {
       prefixes = [this.getPrefixForInstitution(user.institution)];
     }
@@ -414,7 +547,7 @@ export class AppwriteService {
     
     let existingCollId = collId;
     const allColls = ['assets', 'consumables', 'furniture'];
-    const prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
+    const prefixes = await this.getSchoolPrefixesForScope();
     let found = false;
     
     for (const pref of prefixes) {
@@ -473,7 +606,7 @@ export class AppwriteService {
     let asset: Asset | null = null;
     let foundCollId = '';
     const allColls = ['assets', 'consumables', 'furniture'];
-    const prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
+    const prefixes = await this.getSchoolPrefixesForScope();
     
     for (const pref of prefixes) {
       for (const type of allColls) {
@@ -516,7 +649,7 @@ export class AppwriteService {
   // Stock Verification & Approval Operations
   async getRequests(): Promise<VerificationRequest[]> {
     const user = this.currentUser();
-    let prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
+    let prefixes = await this.getSchoolPrefixesForScope();
     if (user && user.role === 'School Admin') {
       prefixes = [this.getPrefixForInstitution(user.institution)];
     }
@@ -557,6 +690,7 @@ export class AppwriteService {
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
     const requestId = 'REQ-' + Date.now();
     
+    await this.getSchools();
     const prefix = this.getPrefixForInstitution(req.institution);
     await this.databases.createDocument(
       APPWRITE_CONFIG.DATABASE_ID,
@@ -598,7 +732,7 @@ export class AppwriteService {
     let foundCollId = '';
     let foundPrefix = '';
     let reqData: any = null;
-    const prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
+    const prefixes = await this.getSchoolPrefixesForScope();
     
     for (const pref of prefixes) {
       const testColl = `${pref}_requests`;
@@ -713,7 +847,7 @@ export class AppwriteService {
   // Audit Logs Operations
   async getAuditLogs(): Promise<AuditLog[]> {
     const user = this.currentUser();
-    let prefixes = ['akcp', 'linga', 'akcas', 'cshm', 'akbed', 'kmch', 'kare'];
+    let prefixes = await this.getSchoolPrefixesForScope();
     if (user && user.role === 'School Admin') {
       prefixes = [this.getPrefixForInstitution(user.institution)];
     }
@@ -746,6 +880,7 @@ export class AppwriteService {
   }
 
   async addAuditLog(log: AuditLog, asset?: Asset): Promise<void> {
+    await this.getSchools();
     let inst = this.currentUser()?.institution || 'KARE';
     if (inst === 'All' && asset) {
       const locs = await this.getLocations();

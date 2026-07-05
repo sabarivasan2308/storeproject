@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AppwriteService } from '../../core/services/appwrite.service';
-import { Asset, Location, VerificationRequest } from '../../core/models/types';
+import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../../core/models/types';
 
 @Component({
   selector: 'app-school-admin',
@@ -328,13 +328,9 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
                           </td>
                           <td>
                             <select class="form-input select-status" [(ngModel)]="item.status">
-                              <option value="Idle">Idle</option>
-                              <option value="Active">Active</option>
-                              <option value="Under Service">Under Service</option>
-                              <option value="Transferred">Transferred</option>
-                              <option value="Missing">Missing</option>
-                              <option value="Damaged">Damaged</option>
-                              <option value="Condemned">Condemned</option>
+                              @for (status of statusList(); track status) {
+                                <option [value]="status">{{ status }}</option>
+                              }
                             </select>
                           </td>
                           <td>
@@ -523,25 +519,17 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
                 <div class="form-group">
                   <label class="form-label">Category</label>
                   <select class="form-input" [(ngModel)]="proposeAsset.category" name="category" required>
-                    <option value="Refrigerators">Refrigerators</option>
-                    <option value="Lab Reagents">Lab Reagents</option>
-                    <option value="Sample Kits">Sample Kits</option>
-                    <option value="Computers">Computers</option>
-                    <option value="Projectors">Projectors</option>
-                    <option value="Air Conditioners">Air Conditioners</option>
-                    <option value="Others">Others</option>
+                    @for (cat of categoryList(); track cat) {
+                      <option [value]="cat">{{ cat }}</option>
+                    }
                   </select>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Initial Status</label>
                   <select class="form-input" [(ngModel)]="proposeAsset.status" name="status" required>
-                    <option value="Idle">Idle</option>
-                    <option value="Active">Active</option>
-                    <option value="Under Service">Under Service</option>
-                    <option value="Transferred">Transferred</option>
-                    <option value="Missing">Missing</option>
-                    <option value="Damaged">Damaged</option>
-                    <option value="Condemned">Condemned</option>
+                    @for (status of statusList(); track status) {
+                      <option [value]="status">{{ status }}</option>
+                    }
                   </select>
                 </div>
               </div>
@@ -620,7 +608,12 @@ import { Asset, Location, VerificationRequest } from '../../core/models/types';
               <div class="form-row-grid">
                 <div class="form-group">
                   <label class="form-label">Vendor</label>
-                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.vendor" name="vendor" placeholder="e.g. Acme Corp" />
+                  <select class="form-input" [(ngModel)]="proposeAsset.vendor" name="vendor">
+                    <option value="">Select Vendor</option>
+                    @for (vendor of vendorList(); track vendor) {
+                      <option [value]="vendor">{{ vendor }}</option>
+                    }
+                  </select>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Warranty Details</label>
@@ -1338,6 +1331,9 @@ export class SchoolAdminComponent implements OnInit {
   assets = signal<Asset[]>([]);
   locations = signal<Location[]>([]);
   requests = signal<VerificationRequest[]>([]);
+  masterCategories = signal<MasterOption[]>([]);
+  masterStatuses = signal<MasterOption[]>([]);
+  vendors = signal<Vendor[]>([]);
   isMockActive = signal<boolean>(true);
 
   // Filters State
@@ -1352,7 +1348,7 @@ export class SchoolAdminComponent implements OnInit {
   auditItems: Array<{
     asset: Asset;
     physicalCount: number;
-    status: 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned' | 'Damaged';
+    status: Asset['status'];
     reason: string;
   }> = [];
 
@@ -1413,11 +1409,17 @@ export class SchoolAdminComponent implements OnInit {
 
   async loadData() {
     try {
-      const [assetsData, locationsData, requestsData] = await Promise.all([
+      const [categoryData, statusData, vendorData, assetsData, locationsData, requestsData] = await Promise.all([
+        this.appwriteService.getCategories(),
+        this.appwriteService.getStatuses(),
+        this.appwriteService.getVendors(),
         this.appwriteService.getAssets(),
         this.appwriteService.getLocations(),
         this.appwriteService.getRequests()
       ]);
+      this.masterCategories.set(categoryData);
+      this.masterStatuses.set(statusData);
+      this.vendors.set(vendorData);
       
       // ISOLATION: filter records belonging to their assigned institution
       const instName = this.institutionName();
@@ -1448,9 +1450,18 @@ export class SchoolAdminComponent implements OnInit {
   institutionRequests = () => this.requests().slice().reverse(); // Newest first
 
   categoryList = computed(() => {
-    const cats = this.assets().map(a => a.category);
+    const cats = [...this.masterCategories().map(c => c.name), ...this.assets().map(a => a.category)];
     return Array.from(new Set(cats));
   });
+
+  statusList = computed(() => Array.from(new Set([
+    ...this.masterStatuses().map(s => s.name),
+    ...this.assets().map(a => a.status)
+  ])));
+  vendorList = computed(() => Array.from(new Set([
+    ...this.vendors().map(v => v.name),
+    ...this.assets().map(a => a.vendor).filter(Boolean)
+  ])));
 
   containerAssets = computed(() => this.assets().filter(a => a.isContainer));
 
@@ -1518,7 +1529,7 @@ export class SchoolAdminComponent implements OnInit {
     this.auditItems = locAssets.map(a => ({
       asset: a,
       physicalCount: a.quantity,
-      status: a.status as 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned' | 'Damaged',
+      status: a.status,
       reason: ''
     }));
   }
@@ -1573,7 +1584,7 @@ export class SchoolAdminComponent implements OnInit {
     this.proposeAsset = {
       id: '',
       name: '',
-      category: 'Lab Reagents',
+      category: this.categoryList()[0] || '',
       barcode: '',
       qrCode: '',
       brand: '',
@@ -1588,7 +1599,7 @@ export class SchoolAdminComponent implements OnInit {
       billDate: '',
       vendor: '',
       warrantyDetails: '',
-      status: 'Active',
+      status: this.statusList().includes('Active') ? 'Active' : (this.statusList()[0] as Asset['status']) || 'Active',
       remarks: '',
       locationId: this.locations()[0]?.id || '',
       isContainer: false

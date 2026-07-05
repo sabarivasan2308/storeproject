@@ -6,7 +6,8 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "appwrite:align": "node scripts/appwrite-align.mjs"
   },
   "private": true,
   "packageManager": "npm@11.12.1",
