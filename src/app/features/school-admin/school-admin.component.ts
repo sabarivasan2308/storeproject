@@ -14,7 +14,6 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
       <!-- Sidebar Navigation -->
       <aside class="sidebar glass-panel">
         <div class="sidebar-header">
-          <span class="sidebar-logo">🏫</span>
           <div>
             <h2 class="display-header sidebar-title">{{ institutionName() }}</h2>
             <span class="badge badge-cyan">School Admin</span>
@@ -23,22 +22,22 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
 
         <nav class="sidebar-nav">
           <button class="nav-link" [class.active]="activeTab() === 'overview'" (click)="setTab('overview')">
-            <span>📊</span> Dashboard Overview
+            Dashboard Overview
           </button>
           <button class="nav-link" [class.active]="activeTab() === 'assets'" (click)="setTab('assets')">
-            <span>📦</span> Assets Inventory
+            Assets Inventory
           </button>
           <button class="nav-link" [class.active]="activeTab() === 'verification'" (click)="setTab('verification')">
-            <span>✅</span> Stock Verification
+            Stock Verification
           </button>
           <button class="nav-link" [class.active]="activeTab() === 'requests'" (click)="setTab('requests')">
-            <span>⏳</span> Submitted Requests
+            Submitted Requests
             @if (pendingRequestsCount() > 0) {
               <span class="badge badge-orange badge-pill">{{ pendingRequestsCount() }}</span>
             }
           </button>
           <button class="nav-link" [class.active]="activeTab() === 'reports'" (click)="setTab('reports')">
-            <span>📄</span> Institution Reports
+            Institution Reports
           </button>
         </nav>
 
@@ -48,7 +47,7 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
             <p class="user-email">{{ userEmail() }}</p>
           </div>
           <button class="btn btn-secondary btn-logout" (click)="onLogout()">
-            <span>Logout</span> 🔌
+            Logout
           </button>
         </div>
       </aside>
@@ -64,49 +63,42 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
             
             <div class="dashboard-grid">
               <div class="glass-panel kpi-card">
-                <div class="kpi-icon-container">📦</div>
                 <div class="kpi-data">
                   <span class="kpi-label">Total Assets</span>
                   <span class="kpi-value">{{ totalAssetsCount() }}</span>
                 </div>
               </div>
               <div class="glass-panel kpi-card">
-                <div class="kpi-icon-container">💰</div>
                 <div class="kpi-data">
                   <span class="kpi-label">Total Value</span>
                   <span class="kpi-value">₹{{ totalAssetValue() | number }}</span>
                 </div>
               </div>
               <div class="glass-panel kpi-card">
-                <div class="kpi-icon-container">⚠️</div>
                 <div class="kpi-data">
                   <span class="kpi-label">Under Service</span>
                   <span class="kpi-value text-cyan">{{ underServiceCount() }}</span>
                 </div>
               </div>
               <div class="glass-panel kpi-card">
-                <div class="kpi-icon-container">🔍</div>
                 <div class="kpi-data">
                   <span class="kpi-label">Missing Assets</span>
                   <span class="kpi-value text-orange">{{ missingAssetsCount() }}</span>
                 </div>
               </div>
               <div class="glass-panel kpi-card">
-                <div class="kpi-icon-container">💥</div>
                 <div class="kpi-data">
                   <span class="kpi-label">Damaged Assets</span>
                   <span class="kpi-value text-orange">{{ damagedAssetsCount() }}</span>
                 </div>
               </div>
               <div class="glass-panel kpi-card">
-                <div class="kpi-icon-container">💤</div>
                 <div class="kpi-data">
                   <span class="kpi-label">Idle Assets</span>
                   <span class="kpi-value text-blue">{{ idleAssetsCount() }}</span>
                 </div>
               </div>
               <div class="glass-panel kpi-card">
-                <div class="kpi-icon-container">❌</div>
                 <div class="kpi-data">
                   <span class="kpi-label">Condemned</span>
                   <span class="kpi-value text-red">{{ condemnedAssetsCount() }}</span>
@@ -155,7 +147,7 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
             <div class="action-header">
               <h1 class="display-header page-heading">Assets Directory</h1>
               <button class="btn btn-primary" (click)="openAddAssetModal()">
-                <span>+</span> Add New Asset
+                Add New Asset
               </button>
             </div>
 
@@ -220,7 +212,7 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
                           <strong>{{ asset.name }}</strong>
                           @if (asset.containerId) {
                             <div class="container-badge">
-                              📦 Stored in: <code>{{ asset.containerId }}</code>
+                              Stored in: <code>{{ asset.containerId }}</code>
                             </div>
                           }
                           @if (asset.isContainer) {
@@ -246,7 +238,7 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
                         </td>
                         <td>
                           <div class="action-buttons">
-                            <button class="btn btn-secondary btn-icon" (click)="selectedDrawerAsset.set(asset)" title="View Details">🔍</button>
+                            <button class="btn btn-secondary btn-icon" (click)="selectedDrawerAsset.set(asset)" title="View Details">View</button>
                             <button class="btn btn-secondary btn-icon" (click)="openRequestModal(asset, 'Quantity Update')" title="Update Stock">🔢</button>
                             <button class="btn btn-secondary btn-icon" (click)="openRequestModal(asset, 'Status Update')" title="Update Status">⚙️</button>
                           </div>

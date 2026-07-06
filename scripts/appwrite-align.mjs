@@ -93,6 +93,16 @@ function asset(collection, data) {
       purchaseOrder: data.purchaseOrder || `PO-${data.id.replace(/[^A-Z0-9]/g, '').slice(0, 18)}`,
       billNumber: data.billNumber || `BILL-${data.id.replace(/[^A-Z0-9]/g, '').slice(0, 16)}`,
       billDate: data.billDate || data.purchaseDate || '2024-01-15',
+      billId: data.billId || '',
+      billItemId: data.billItemId || '',
+      productId: data.productId || '',
+      schoolId: data.schoolId || '',
+      departmentId: data.departmentId || '',
+      department: data.department || '',
+      building: data.building || '',
+      room: data.room || '',
+      locationLabel: data.locationLabel || '',
+      generatedFromProcurement: data.generatedFromProcurement || false,
       vendor: data.vendor || 'KARE Approved Vendor',
       warrantyDetails: data.warrantyDetails || '1 Year Standard Warranty',
       status: data.status || 'Active',
@@ -110,20 +120,20 @@ const demoAssetSeeds = [
   asset('akcp_assets', { id: 'FR-AKCP-BT-F1-001', name: 'Lab Refrigerator', category: 'Refrigerators', brand: 'Thermo Fisher', model: 'TSX-2305', serialNumber: 'TF-AKCP-001', quantity: 1, unitPrice: 125000, purchaseDate: '2023-08-10', purchaseOrder: 'POAKCP2023001', billNumber: 'BILLAKCP1001', billDate: '2023-08-14', vendor: 'BioLabs Equipment Ltd.', warrantyDetails: '2 Years Cooling Warranty', status: 'Active', locationId: 'LOC-001', isContainer: true }),
   asset('akcp_consumables', { id: 'CH-AKCP-BT-F1-002', name: 'Sodium Chloride AR Grade', category: 'Lab Reagents', brand: 'Merck', model: 'NaCl-500G', quantity: 24, unitPrice: 450, purchaseDate: '2024-02-22', purchaseOrder: 'POAKCP2024002', billNumber: 'BILLAKCP2002', billDate: '2024-02-24', vendor: 'Merck Chemicals', status: 'Idle', locationId: 'LOC-001', containerId: 'FR-AKCP-BT-F1-001' }),
   asset('akcp_consumables', { id: 'SK-AKCP-BT-F1-004', name: 'DNA Sample Kit', category: 'Sample Kits', brand: 'Roche', model: 'DNA-KIT-V1', quantity: 18, unitPrice: 3200, purchaseDate: '2024-03-15', purchaseOrder: 'POAKCP2024003', billNumber: 'BILLAKCP2031', billDate: '2024-03-17', vendor: 'Roche India', status: 'Active', locationId: 'LOC-002' }),
-  asset('linga_assets', { id: 'PC-LINGA-PR-G-001', name: 'HP Desktop Workstation', category: 'Computers', brand: 'HP', model: 'ProDesk 400', serialNumber: 'HP-LINGA-001', quantity: 20, unitPrice: 48000, purchaseDate: '2024-01-18', purchaseOrder: 'POLINGA2024001', billNumber: 'BILLLINGA1001', billDate: '2024-01-20', vendor: 'HP Retail Plaza', status: 'Active', locationId: 'LOC-LINGA-001' }),
-  asset('linga_assets', { id: 'PJ-LINGA-SC-F1-002', name: 'Epson Classroom Projector', category: 'Projectors', brand: 'Epson', model: 'EB-X49', serialNumber: 'EP-LINGA-002', quantity: 4, unitPrice: 39000, purchaseDate: '2024-02-12', purchaseOrder: 'POLINGA2024002', billNumber: 'BILLLINGA1008', billDate: '2024-02-14', vendor: 'Epson Projector World', status: 'Missing', locationId: 'LOC-LINGA-002' }),
+  asset('linga_assets', { id: 'PC-LINGA-PR-G-001', name: 'HP Desktop Workstation', category: 'Computers', brand: 'HP', model: 'ProDesk 400', serialNumber: 'HP-LINGA-001', quantity: 20, unitPrice: 48000, purchaseDate: '2026-06-15', purchaseOrder: 'POLINGA2026008', billNumber: 'BILL-DEMO-LINGA-2026-001', billDate: '2026-06-16', billId: 'bill-demo-linga-2026-001', billItemId: 'billitem-demo-linga-hp-desktop', productId: 'prod-hp-prodesk-400', schoolId: 'linga', departmentId: 'LINGA Global School:Computer Lab', department: 'Computer Lab', building: 'Primary Block', room: 'CL-001', locationLabel: 'LINGA Global School -> Primary Block -> Ground Floor -> Computer Lab -> CL-001', generatedFromProcurement: true, vendor: 'HP Retail Plaza', status: 'Active', locationId: 'LOC-LINGA-001' }),
+  asset('linga_assets', { id: 'PJ-LINGA-SC-F1-002', name: 'Epson Classroom Projector', category: 'Projectors', brand: 'Epson', model: 'EB-X49', serialNumber: 'EP-LINGA-002', quantity: 4, unitPrice: 39000, purchaseDate: '2026-06-15', purchaseOrder: 'POLINGA2026008', billNumber: 'BILL-DEMO-LINGA-2026-001', billDate: '2026-06-16', billId: 'bill-demo-linga-2026-001', billItemId: 'billitem-demo-linga-epson-projector', productId: 'prod-epson-eb-x49', schoolId: 'linga', departmentId: 'LINGA Global School:Smart Classroom', department: 'Smart Classroom', building: 'Primary Block', room: 'SC-102', locationLabel: 'LINGA Global School -> Primary Block -> First Floor -> Smart Classroom -> SC-102', generatedFromProcurement: true, vendor: 'Epson Projector World', status: 'Missing', locationId: 'LOC-LINGA-002' }),
   asset('linga_furniture', { id: 'TB-LINGA-CL-003', name: 'Student Study Table', category: 'Furniture', brand: 'Godrej', model: 'EduDesk', quantity: 30, unitPrice: 4200, purchaseDate: '2023-11-05', purchaseOrder: 'POLINGA2023019', billNumber: 'BILLLINGA0912', billDate: '2023-11-08', vendor: 'Godrej Retail', status: 'Active', locationId: 'LOC-LINGA-002' }),
   asset('akcas_assets', { id: 'PJ-AKCAS-SC-F2-001', name: 'Sony Short Throw Projector', category: 'Projectors', brand: 'Sony', model: 'VPL-SX631', serialNumber: 'SN-AKCAS-001', quantity: 2, unitPrice: 61000, purchaseDate: '2024-05-05', purchaseOrder: 'POAKCAS2024001', billNumber: 'BILLAKCAS3001', billDate: '2024-05-08', vendor: 'Epson Projector World', status: 'Active', locationId: 'LOC-AKCAS-001' }),
   asset('akcas_assets', { id: 'PC-AKCAS-DL-002', name: 'Lenovo Thin Client', category: 'Computers', brand: 'Lenovo', model: 'ThinkCentre M70q', serialNumber: 'LN-AKCAS-002', quantity: 12, unitPrice: 52000, purchaseDate: '2024-04-01', purchaseOrder: 'POAKCAS2024005', billNumber: 'BILLAKCAS3010', billDate: '2024-04-04', vendor: 'Lenovo Commercial Store', status: 'Damaged', locationId: 'LOC-AKCAS-002' }),
   asset('cshm_consumables', { id: 'REF-CSHM-BTK-001', name: 'Samsung Double Door Refrigerator', category: 'Kitchen Equipment', brand: 'Samsung', model: 'RT34', serialNumber: 'SM-CSHM-001', quantity: 1, unitPrice: 56000, purchaseDate: '2023-07-10', purchaseOrder: 'POCSHM2023001', billNumber: 'BILLCSHM4010', billDate: '2023-07-12', vendor: 'Samsung Business Solutions', status: 'Active', locationId: 'LOC-CSHM-001', isContainer: true }),
-  asset('cshm_consumables', { id: 'BL-CSHM-BTK-002', name: 'Philips Blender', category: 'Kitchen Appliances', brand: 'Philips', model: 'HL7756', quantity: 5, unitPrice: 3800, purchaseDate: '2023-08-02', purchaseOrder: 'POCSHM2023006', billNumber: 'BILLCSHM4022', billDate: '2023-08-04', vendor: 'Phillips Home Appliances', status: 'Active', locationId: 'LOC-CSHM-001' }),
+  asset('cshm_consumables', { id: 'BL-CSHM-BTK-002', name: 'Philips Blender', category: 'Kitchen Appliances', brand: 'Philips', model: 'HL7756', quantity: 5, unitPrice: 3800, purchaseDate: '2026-05-10', purchaseOrder: 'POCSHM2026012', billNumber: 'BILL-DEMO-CSHM-2026-002', billDate: '2026-05-12', billId: 'bill-demo-cshm-2026-002', billItemId: 'billitem-demo-cshm-philips-blender', productId: 'prod-philips-hl7756', schoolId: 'cshm', departmentId: 'CSHM:Bakery Kitchen', department: 'Bakery Kitchen', building: 'Hospitality Block', room: 'BK-001', locationLabel: 'CSHM -> Hospitality Block -> Ground Floor -> Bakery Kitchen -> BK-001', generatedFromProcurement: true, vendor: 'Phillips Home Appliances', status: 'Active', locationId: 'LOC-CSHM-001' }),
   asset('cshm_consumables', { id: 'GL-CSHM-TR-012', name: 'Ocean Water Glass Set', category: 'Glassware', brand: 'Ocean', model: 'Classic-300', quantity: 160, unitPrice: 95, purchaseDate: '2024-01-28', purchaseOrder: 'POCSHM2024012', billNumber: 'BILLCSHM5008', billDate: '2024-01-30', vendor: 'Ocean Distributors', status: 'Damaged', locationId: 'LOC-CSHM-002' }),
   asset('cshm_furniture', { id: 'TB-CSHM-TR-007', name: 'Restaurant Training Table', category: 'Furniture', brand: 'Godrej', model: 'HotelPro', quantity: 8, unitPrice: 12500, purchaseDate: '2023-09-19', purchaseOrder: 'POCSHM2023014', billNumber: 'BILLCSHM4077', billDate: '2023-09-22', vendor: 'Godrej Retail', status: 'Active', locationId: 'LOC-CSHM-002' }),
   asset('cshm_assets', { id: 'VC-CSHM-HK-001', name: 'Industrial Vacuum Cleaner', category: 'Kitchen Equipment', brand: 'Karcher', model: 'NT-30', serialNumber: 'KR-CSHM-001', quantity: 2, unitPrice: 31000, purchaseDate: '2024-03-10', purchaseOrder: 'POCSHM2024021', billNumber: 'BILLCSHM5100', billDate: '2024-03-12', vendor: 'Hotelware Traders', status: 'Under Service', locationId: 'LOC-CSHM-003' }),
   asset('akbed_assets', { id: 'PC-AKBED-CL-001', name: 'Lenovo Teaching Lab Desktop', category: 'Computers', brand: 'Lenovo', model: 'V50t', serialNumber: 'LN-AKBED-001', quantity: 15, unitPrice: 45500, purchaseDate: '2024-02-05', purchaseOrder: 'POAKBED2024001', billNumber: 'BILLAKBED1001', billDate: '2024-02-08', vendor: 'Lenovo Commercial Store', status: 'Active', locationId: 'LOC-AKBED-001' }),
   asset('akbed_assets', { id: 'PJ-AKBED-PL-002', name: 'BenQ Interactive Projector', category: 'Projectors', brand: 'BenQ', model: 'EW800ST', serialNumber: 'BQ-AKBED-002', quantity: 1, unitPrice: 72000, purchaseDate: '2024-03-11', purchaseOrder: 'POAKBED2024003', billNumber: 'BILLAKBED1012', billDate: '2024-03-14', vendor: 'Epson Projector World', status: 'Idle', locationId: 'LOC-AKBED-002' }),
   asset('kmch_assets', { id: 'ECG-KMCH-ER-001', name: 'Philips ECG Machine', category: 'Medical Equipment', brand: 'Philips', model: 'PageWriter TC30', serialNumber: 'PH-KMCH-001', quantity: 2, unitPrice: 145000, purchaseDate: '2024-01-25', purchaseOrder: 'POKMCH2024001', billNumber: 'BILLKMCH2001', billDate: '2024-01-29', vendor: 'Philips Health Systems', status: 'Active', locationId: 'LOC-KMCH-001' }),
-  asset('kmch_assets', { id: 'MON-KMCH-DL-002', name: 'Patient Multiparameter Monitor', category: 'Medical Equipment', brand: 'Mindray', model: 'uMEC12', serialNumber: 'MR-KMCH-002', quantity: 3, unitPrice: 98000, purchaseDate: '2024-04-20', purchaseOrder: 'POKMCH2024004', billNumber: 'BILLKMCH2030', billDate: '2024-04-22', vendor: 'Philips Health Systems', status: 'Maintenance', locationId: 'LOC-KMCH-002' })
+  asset('kmch_assets', { id: 'MON-KMCH-DL-002', name: 'Patient Multiparameter Monitor', category: 'Medical Equipment', brand: 'Mindray', model: 'uMEC12', serialNumber: 'MR-KMCH-002', quantity: 3, unitPrice: 98000, purchaseDate: '2026-07-01', purchaseOrder: 'POKMCH2026020', billNumber: 'BILL-DEMO-KMCH-2026-003', billDate: '2026-07-02', billId: 'bill-demo-kmch-2026-003', billItemId: 'billitem-demo-kmch-monitor', productId: 'prod-mindray-umec12', schoolId: 'kmch', departmentId: 'KMCH:Diagnostics Lab', department: 'Diagnostics Lab', building: 'Hospital Block', room: 'DL-110', locationLabel: 'KMCH -> Hospital Block -> First Floor -> Diagnostics Lab -> DL-110', generatedFromProcurement: true, vendor: 'Philips Health Systems', status: 'Maintenance', locationId: 'LOC-KMCH-002' })
 ];
 
 const demoRequestSeeds = [
@@ -137,6 +147,136 @@ const demoAuditLogSeeds = [
   { collection: 'akcp_audit_logs', id: 'AUD-DEMO-AKCP-001', data: { id: 'AUD-DEMO-AKCP-001', date: '2026-07-05 09:30:00', userEmail: 'akcp@kare.edu', userName: 'AKCP Admin', action: 'Submitted verification request: Quantity Update', details: 'Asset CH-AKCP-BT-F1-002 requires quantity review.', reason: 'Stock verification' } },
   { collection: 'linga_audit_logs', id: 'AUD-DEMO-LINGA-001', data: { id: 'AUD-DEMO-LINGA-001', date: '2026-07-05 10:10:00', userEmail: 'linga@kare.edu', userName: 'LINGA Admin', action: 'Submitted verification request: Mark Missing', details: 'Projector missing from smart classroom.', reason: 'Classroom audit' } },
   { collection: 'cshm_audit_logs', id: 'AUD-DEMO-CSHM-001', data: { id: 'AUD-DEMO-CSHM-001', date: '2026-07-04 16:20:00', userEmail: 'super@kare.edu', userName: 'Dr. Suresh Kumar', action: 'Approved Verification Request', details: 'Approved damaged glassware request for CSHM.', reason: 'Replacement planning' } }
+];
+
+const demoProductSeeds = [
+  { id: 'prod-hp-prodesk-400', data: { barcode: '8901001004001', name: 'HP Desktop Workstation', category: 'Computers', brand: 'HP', model: 'ProDesk 400', manufacturer: 'HP India', specifications: 'Intel i5, 16 GB RAM, 512 GB SSD, Windows Pro', suggestedWarranty: '3 Years Onsite Warranty', imageUrl: '', active: true } },
+  { id: 'prod-epson-eb-x49', data: { barcode: '8901001004002', name: 'Epson Classroom Projector', category: 'Projectors', brand: 'Epson', model: 'EB-X49', manufacturer: 'Epson India', specifications: 'XGA classroom projector, HDMI, 3600 lumens', suggestedWarranty: '2 Years Lamp Warranty', imageUrl: '', active: true } },
+  { id: 'prod-philips-hl7756', data: { barcode: '8901001004003', name: 'Philips Blender', category: 'Kitchen Appliances', brand: 'Philips', model: 'HL7756', manufacturer: 'Philips Domestic Appliances', specifications: '750 W mixer grinder with stainless steel jars', suggestedWarranty: '2 Years Product Warranty', imageUrl: '', active: true } },
+  { id: 'prod-mindray-umec12', data: { barcode: '8901001004004', name: 'Patient Multiparameter Monitor', category: 'Medical Equipment', brand: 'Mindray', model: 'uMEC12', manufacturer: 'Mindray Medical', specifications: 'Multiparameter patient monitor with SpO2, ECG, NIBP, temperature', suggestedWarranty: '2 Years Medical Warranty', imageUrl: '', active: true } }
+];
+
+const demoBillSeeds = [
+  {
+    id: 'bill-demo-linga-2026-001',
+    data: {
+      billNumber: 'BILL-DEMO-LINGA-2026-001',
+      purchaseOrderNumber: 'POLINGA2026008',
+      invoiceNumber: 'INV-LINGA-10024',
+      vendorId: 'hp-retail-plaza',
+      vendorName: 'HP Retail Plaza',
+      schoolId: 'linga',
+      schoolName: 'LINGA Global School',
+      departmentId: 'LINGA Global School:Computer Lab',
+      departmentName: 'Computer Lab',
+      purchaseDate: '2026-06-15',
+      billingDate: '2026-06-16',
+      gstPercent: 18,
+      gstAmount: 200880,
+      transportCharges: 5000,
+      packingCharges: 2000,
+      insuranceCharges: 3000,
+      otherCharges: 0,
+      discount: 10000,
+      subtotal: 1116000,
+      grandTotal: 1316880,
+      paymentStatus: 'Paid',
+      paymentMethod: 'NEFT',
+      invoiceAttachmentIds: [],
+      remarks: 'Demo multi-product electronics purchase for computer lab and smart classroom.',
+      createdBy: 'super@kare.edu',
+      approvedBy: 'super@kare.edu',
+      approvalDate: '2026-06-16',
+      associatedAssetIds: ['PC-LINGA-PR-G-001', 'PJ-LINGA-SC-F1-002'],
+      createdAt: '2026-06-16T10:00:00.000Z'
+    }
+  },
+  {
+    id: 'bill-demo-cshm-2026-002',
+    data: {
+      billNumber: 'BILL-DEMO-CSHM-2026-002',
+      purchaseOrderNumber: 'POCSHM2026012',
+      invoiceNumber: 'INV-CSHM-22015',
+      vendorId: 'phillips-home-appliances',
+      vendorName: 'Phillips Home Appliances',
+      schoolId: 'cshm',
+      schoolName: 'CSHM',
+      departmentId: 'CSHM:Bakery Kitchen',
+      departmentName: 'Bakery Kitchen',
+      purchaseDate: '2026-05-10',
+      billingDate: '2026-05-12',
+      gstPercent: 18,
+      gstAmount: 3420,
+      transportCharges: 1200,
+      packingCharges: 350,
+      insuranceCharges: 0,
+      otherCharges: 250,
+      discount: 500,
+      subtotal: 19000,
+      grandTotal: 23720,
+      paymentStatus: 'Partially Paid',
+      paymentMethod: 'UPI',
+      invoiceAttachmentIds: [],
+      remarks: 'Demo kitchen equipment purchase with partial payment pending.',
+      createdBy: 'super@kare.edu',
+      approvedBy: 'super@kare.edu',
+      approvalDate: '2026-05-12',
+      associatedAssetIds: ['BL-CSHM-BTK-002'],
+      createdAt: '2026-05-12T11:30:00.000Z'
+    }
+  },
+  {
+    id: 'bill-demo-kmch-2026-003',
+    data: {
+      billNumber: 'BILL-DEMO-KMCH-2026-003',
+      purchaseOrderNumber: 'POKMCH2026020',
+      invoiceNumber: 'INV-KMCH-77301',
+      vendorId: 'philips-health-systems',
+      vendorName: 'Philips Health Systems',
+      schoolId: 'kmch',
+      schoolName: 'KMCH',
+      departmentId: 'KMCH:Diagnostics Lab',
+      departmentName: 'Diagnostics Lab',
+      purchaseDate: '2026-07-01',
+      billingDate: '2026-07-02',
+      gstPercent: 12,
+      gstAmount: 35280,
+      transportCharges: 6000,
+      packingCharges: 1500,
+      insuranceCharges: 2500,
+      otherCharges: 1000,
+      discount: 0,
+      subtotal: 294000,
+      grandTotal: 340280,
+      paymentStatus: 'Pending',
+      paymentMethod: '',
+      invoiceAttachmentIds: [],
+      remarks: 'Demo medical equipment purchase pending finance clearance.',
+      createdBy: 'super@kare.edu',
+      approvedBy: '',
+      approvalDate: '',
+      associatedAssetIds: ['MON-KMCH-DL-002'],
+      createdAt: '2026-07-02T09:15:00.000Z'
+    }
+  }
+];
+
+const demoBillItemSeeds = [
+  { id: 'billitem-demo-linga-hp-desktop', data: { billId: 'bill-demo-linga-2026-001', productId: 'prod-hp-prodesk-400', productName: 'HP Desktop Workstation', category: 'Computers', brand: 'HP', model: 'ProDesk 400', manufacturer: 'HP India', specifications: 'Intel i5, 16 GB RAM, 512 GB SSD, Windows Pro', barcode: '8901001004001', quantity: 20, unitPrice: 48000, gstPercent: 18, gstAmount: 172800, itemTotal: 960000, warrantyDetails: '3 Years Onsite Warranty', locationId: 'LOC-LINGA-001', generatedAssetIds: ['PC-LINGA-PR-G-001'] } },
+  { id: 'billitem-demo-linga-epson-projector', data: { billId: 'bill-demo-linga-2026-001', productId: 'prod-epson-eb-x49', productName: 'Epson Classroom Projector', category: 'Projectors', brand: 'Epson', model: 'EB-X49', manufacturer: 'Epson India', specifications: 'XGA classroom projector, HDMI, 3600 lumens', barcode: '8901001004002', quantity: 4, unitPrice: 39000, gstPercent: 18, gstAmount: 28080, itemTotal: 156000, warrantyDetails: '2 Years Lamp Warranty', locationId: 'LOC-LINGA-002', generatedAssetIds: ['PJ-LINGA-SC-F1-002'] } },
+  { id: 'billitem-demo-cshm-philips-blender', data: { billId: 'bill-demo-cshm-2026-002', productId: 'prod-philips-hl7756', productName: 'Philips Blender', category: 'Kitchen Appliances', brand: 'Philips', model: 'HL7756', manufacturer: 'Philips Domestic Appliances', specifications: '750 W mixer grinder with stainless steel jars', barcode: '8901001004003', quantity: 5, unitPrice: 3800, gstPercent: 18, gstAmount: 3420, itemTotal: 19000, warrantyDetails: '2 Years Product Warranty', locationId: 'LOC-CSHM-001', generatedAssetIds: ['BL-CSHM-BTK-002'] } },
+  { id: 'billitem-demo-kmch-monitor', data: { billId: 'bill-demo-kmch-2026-003', productId: 'prod-mindray-umec12', productName: 'Patient Multiparameter Monitor', category: 'Medical Equipment', brand: 'Mindray', model: 'uMEC12', manufacturer: 'Mindray Medical', specifications: 'Multiparameter patient monitor with SpO2, ECG, NIBP, temperature', barcode: '8901001004004', quantity: 3, unitPrice: 98000, gstPercent: 12, gstAmount: 35280, itemTotal: 294000, warrantyDetails: '2 Years Medical Warranty', locationId: 'LOC-KMCH-002', generatedAssetIds: ['MON-KMCH-DL-002'] } }
+];
+
+const demoTransferSeeds = [
+  { id: 'transfer-demo-linga-projector-001', data: { assetId: 'PJ-LINGA-SC-F1-002', fromDepartmentId: 'LINGA Global School:Computer Lab', fromDepartmentName: 'Computer Lab', toDepartmentId: 'LINGA Global School:Smart Classroom', toDepartmentName: 'Smart Classroom', transferDate: '2026-06-20T09:30:00.000Z', transferReason: 'Moved projector from lab stock to classroom installation.', transferredBy: 'super@kare.edu', approvedBy: 'super@kare.edu' } },
+  { id: 'transfer-demo-cshm-blender-001', data: { assetId: 'BL-CSHM-BTK-002', fromDepartmentId: 'CSHM:Training Restaurant', fromDepartmentName: 'Training Restaurant', toDepartmentId: 'CSHM:Bakery Kitchen', toDepartmentName: 'Bakery Kitchen', transferDate: '2026-05-18T14:00:00.000Z', transferReason: 'Transferred to bakery practical kitchen for regular use.', transferredBy: 'super@kare.edu', approvedBy: 'cshm@kare.edu' } }
+];
+
+const demoProcurementAuditSeeds = [
+  { id: 'proc-audit-demo-linga-001', data: { billId: 'bill-demo-linga-2026-001', date: '2026-06-16T10:00:00.000Z', userEmail: 'super@kare.edu', userName: 'Dr. Suresh Kumar', action: 'Procurement Created', details: 'Demo LINGA bill created with two product lines and linked assets.' } },
+  { id: 'proc-audit-demo-cshm-001', data: { billId: 'bill-demo-cshm-2026-002', date: '2026-05-12T11:30:00.000Z', userEmail: 'super@kare.edu', userName: 'Dr. Suresh Kumar', action: 'Payment Updated', details: 'Demo CSHM bill marked partially paid through UPI.' } },
+  { id: 'proc-audit-demo-kmch-001', data: { billId: 'bill-demo-kmch-2026-003', date: '2026-07-02T09:15:00.000Z', userEmail: 'super@kare.edu', userName: 'Dr. Suresh Kumar', action: 'Procurement Created', details: 'Demo KMCH medical equipment bill created and pending payment.' } }
 ];
 
 const userSeeds = [
@@ -167,6 +307,16 @@ const baseAssetAttributes = [
   ['string', 'purchaseOrder', 255, false],
   ['string', 'billNumber', 255, false],
   ['string', 'billDate', 255, false],
+  ['string', 'billId', 255, false],
+  ['string', 'billItemId', 255, false],
+  ['string', 'productId', 255, false],
+  ['string', 'schoolId', 255, false],
+  ['string', 'departmentId', 255, false],
+  ['string', 'department', 255, false],
+  ['string', 'building', 255, false],
+  ['string', 'room', 255, false],
+  ['string', 'locationLabel', 1000, false],
+  ['boolean', 'generatedFromProcurement', null, false],
   ['string', 'vendor', 255, false],
   ['string', 'warrantyDetails', 255, false],
   ['string', 'status', 255, true],
@@ -250,6 +400,146 @@ const masterSchemas = {
   ]
 };
 
+const globalSchemas = {
+  bills: [
+    ['string', 'billNumber', 255, true],
+    ['string', 'purchaseOrderNumber', 255, true],
+    ['string', 'invoiceNumber', 255, true],
+    ['string', 'vendorId', 255, false],
+    ['string', 'vendorName', 255, true],
+    ['string', 'schoolId', 255, true],
+    ['string', 'schoolName', 255, true],
+    ['string', 'departmentId', 255, false],
+    ['string', 'departmentName', 255, false],
+    ['string', 'purchaseDate', 255, true],
+    ['string', 'billingDate', 255, true],
+    ['integer', 'gstPercent', null, false],
+    ['integer', 'gstAmount', null, false],
+    ['integer', 'transportCharges', null, false],
+    ['integer', 'packingCharges', null, false],
+    ['integer', 'insuranceCharges', null, false],
+    ['integer', 'otherCharges', null, false],
+    ['integer', 'discount', null, false],
+    ['integer', 'subtotal', null, false],
+    ['integer', 'grandTotal', null, false],
+    ['string', 'paymentStatus', 255, true],
+    ['string', 'paymentMethod', 255, false],
+    ['string', 'invoiceAttachmentIds', 255, false, true],
+    ['string', 'remarks', 1000, false],
+    ['string', 'createdBy', 255, true],
+    ['string', 'approvedBy', 255, false],
+    ['string', 'approvalDate', 255, false],
+    ['string', 'associatedAssetIds', 255, false, true],
+    ['string', 'createdAt', 255, true]
+  ],
+  bill_items: [
+    ['string', 'billId', 255, true],
+    ['string', 'productId', 255, false],
+    ['string', 'productName', 255, true],
+    ['string', 'category', 255, true],
+    ['string', 'brand', 255, false],
+    ['string', 'model', 255, false],
+    ['string', 'manufacturer', 255, false],
+    ['string', 'specifications', 1000, false],
+    ['string', 'barcode', 255, false],
+    ['integer', 'quantity', null, true],
+    ['integer', 'unitPrice', null, true],
+    ['integer', 'gstPercent', null, false],
+    ['integer', 'gstAmount', null, false],
+    ['integer', 'itemTotal', null, true],
+    ['string', 'warrantyDetails', 255, false],
+    ['string', 'locationId', 255, true],
+    ['string', 'generatedAssetIds', 255, false, true]
+  ],
+  products: [
+    ['string', 'barcode', 255, false],
+    ['string', 'name', 255, true],
+    ['string', 'category', 255, true],
+    ['string', 'brand', 255, false],
+    ['string', 'model', 255, false],
+    ['string', 'manufacturer', 255, false],
+    ['string', 'specifications', 1000, false],
+    ['string', 'suggestedWarranty', 255, false],
+    ['string', 'imageUrl', 1000, false],
+    ['boolean', 'active', null, false]
+  ],
+  departments: [
+    ['string', 'schoolId', 255, true],
+    ['string', 'schoolName', 255, true],
+    ['string', 'name', 255, true],
+    ['boolean', 'active', null, false]
+  ],
+  asset_transfers: [
+    ['string', 'assetId', 255, true],
+    ['string', 'fromDepartmentId', 255, false],
+    ['string', 'fromDepartmentName', 255, false],
+    ['string', 'toDepartmentId', 255, true],
+    ['string', 'toDepartmentName', 255, true],
+    ['string', 'transferDate', 255, true],
+    ['string', 'transferReason', 1000, true],
+    ['string', 'transferredBy', 255, true],
+    ['string', 'approvedBy', 255, false]
+  ],
+  procurement_audit_logs: [
+    ['string', 'billId', 255, true],
+    ['string', 'date', 255, true],
+    ['string', 'userEmail', 255, true],
+    ['string', 'userName', 255, true],
+    ['string', 'action', 255, true],
+    ['string', 'details', 1000, true]
+  ]
+};
+
+const collectionIndexes = {
+  bills: [
+    ['idx_bill_number', 'key', ['billNumber']],
+    ['idx_invoice_number', 'key', ['invoiceNumber']],
+    ['idx_vendor', 'key', ['vendorName']],
+    ['idx_school', 'key', ['schoolName']],
+    ['idx_department', 'key', ['departmentName']],
+    ['idx_purchase_date', 'key', ['purchaseDate']],
+    ['idx_billing_date', 'key', ['billingDate']],
+    ['idx_payment_status', 'key', ['paymentStatus']]
+  ],
+  bill_items: [
+    ['idx_bill_id', 'key', ['billId']],
+    ['idx_product', 'key', ['productId']],
+    ['idx_category', 'key', ['category']]
+  ],
+  products: [
+    ['idx_barcode', 'key', ['barcode']],
+    ['idx_product_name', 'key', ['name']],
+    ['idx_product_category', 'key', ['category']]
+  ],
+  departments: [
+    ['idx_department_school', 'key', ['schoolName']],
+    ['idx_department_name', 'key', ['name']]
+  ],
+  asset_transfers: [
+    ['idx_transfer_asset', 'key', ['assetId']],
+    ['idx_transfer_date', 'key', ['transferDate']]
+  ],
+  procurement_audit_logs: [
+    ['idx_procurement_bill', 'key', ['billId']],
+    ['idx_procurement_date', 'key', ['date']]
+  ],
+  assets: [
+    ['idx_asset_bill', 'key', ['billId']],
+    ['idx_asset_product', 'key', ['productId']],
+    ['idx_asset_department', 'key', ['departmentId']]
+  ],
+  consumables: [
+    ['idx_consumable_bill', 'key', ['billId']],
+    ['idx_consumable_product', 'key', ['productId']],
+    ['idx_consumable_department', 'key', ['departmentId']]
+  ],
+  furniture: [
+    ['idx_furniture_bill', 'key', ['billId']],
+    ['idx_furniture_product', 'key', ['productId']],
+    ['idx_furniture_department', 'key', ['departmentId']]
+  ]
+};
+
 async function request(method, path, body) {
   const response = await fetch(`${endpoint}${path}`, {
     method,
@@ -301,14 +591,27 @@ async function ensureDatabase() {
 }
 
 async function ensureAttribute(collectionId, attribute) {
-  const [type, keyName, size, required] = attribute;
+  const [type, keyName, size, required, array = false] = attribute;
   let path = `/databases/${databaseId}/collections/${collectionId}/attributes/${type}`;
-  let body = { key: keyName, required, array: false };
+  let body = { key: keyName, required, array };
   if (type === 'string') body.size = size;
   const result = await request('POST', path, body);
   if (result.ok) return 'created';
   if (result.status === 409) return 'exists';
   throw new Error(`Attribute ${collectionId}.${keyName}: ${result.status} ${JSON.stringify(result.data)}`);
+}
+
+async function ensureIndex(collectionId, index) {
+  const [key, type, attributes, orders = []] = index;
+  const result = await request('POST', `/databases/${databaseId}/collections/${collectionId}/indexes`, {
+    key,
+    type,
+    attributes,
+    orders
+  });
+  if (result.ok) return 'created';
+  if (result.status === 409) return 'exists';
+  throw new Error(`Index ${collectionId}.${key}: ${result.status} ${JSON.stringify(result.data)}`);
 }
 
 async function ensureDocument(collectionId, documentId, data) {
@@ -377,12 +680,12 @@ async function ensureMembership(teamId, user) {
   throw new Error(`Membership ${teamId}.${user.id}: ${created.status} ${JSON.stringify(created.data)}`);
 }
 
-async function ensureBucket() {
-  const existing = await request('GET', '/storage/buckets/asset-attachments');
+async function ensureBucket(bucketId, name) {
+  const existing = await request('GET', `/storage/buckets/${bucketId}`);
   if (existing.ok) return 'exists';
   const created = await request('POST', '/storage/buckets', {
-    bucketId: 'asset-attachments',
-    name: 'Asset Attachments',
+    bucketId,
+    name,
     permissions,
     fileSecurity: false,
     enabled: true,
@@ -394,7 +697,10 @@ async function ensureBucket() {
   });
   if (created.ok) return 'created';
   if (created.status === 409) return 'exists';
-  throw new Error(`Bucket asset-attachments: ${created.status} ${JSON.stringify(created.data)}`);
+  if (created.status === 403 && created.data?.type === 'additional_resource_not_allowed') {
+    return 'skipped-plan-limit';
+  }
+  throw new Error(`Bucket ${bucketId}: ${created.status} ${JSON.stringify(created.data)}`);
 }
 
 async function collectVendorNames() {
@@ -417,11 +723,12 @@ async function main() {
     database: null,
     collectionsCreated: [],
     attributesCreated: [],
+    indexesCreated: [],
     documentsCreatedOrUpdated: [],
     authUsers: [],
     teams: [],
     memberships: [],
-    bucket: null
+    buckets: []
   };
 
   summary.database = await ensureDatabase();
@@ -455,6 +762,45 @@ async function main() {
       const attributeStatus = await ensureAttribute(collectionId, attribute);
       if (attributeStatus === 'created') {
         summary.attributesCreated.push(`${collectionId}.${attribute[1]}`);
+        await sleep(250);
+      }
+    }
+  }
+
+  for (const [collectionId, schema] of Object.entries(globalSchemas)) {
+    const collectionStatus = await ensureCollection(collectionId);
+    if (collectionStatus === 'created') {
+      summary.collectionsCreated.push(collectionId);
+      await sleep(500);
+    }
+    for (const attribute of schema) {
+      const attributeStatus = await ensureAttribute(collectionId, attribute);
+      if (attributeStatus === 'created') {
+        summary.attributesCreated.push(`${collectionId}.${attribute[1]}`);
+        await sleep(250);
+      }
+    }
+  }
+
+  for (const school of schoolSeeds) {
+    for (const kind of ['assets', 'consumables', 'furniture']) {
+      const collectionId = `${school.prefix}_${kind}`;
+      for (const index of collectionIndexes[kind] || []) {
+        const indexStatus = await ensureIndex(collectionId, index);
+        if (indexStatus === 'created') {
+          summary.indexesCreated.push(`${collectionId}.${index[0]}`);
+          await sleep(250);
+        }
+      }
+    }
+  }
+
+  for (const [collectionId, indexes] of Object.entries(collectionIndexes)) {
+    if (['assets', 'consumables', 'furniture'].includes(collectionId)) continue;
+    for (const index of indexes) {
+      const indexStatus = await ensureIndex(collectionId, index);
+      if (indexStatus === 'created') {
+        summary.indexesCreated.push(`${collectionId}.${index[0]}`);
         await sleep(250);
       }
     }
@@ -499,9 +845,51 @@ async function main() {
     summary.documentsCreatedOrUpdated.push(`${school.prefix}_locations.${loc.id}:${status}`);
   }
 
+  const departmentSeeds = new Map();
+  for (const loc of locationSeeds) {
+    const school = schoolSeeds.find(s => s.name === loc.institution);
+    if (!school) continue;
+    const id = `${school.prefix}-${loc.department}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 36);
+    departmentSeeds.set(id, {
+      schoolId: school.id,
+      schoolName: school.name,
+      name: loc.department,
+      active: true
+    });
+  }
+  for (const [id, data] of departmentSeeds.entries()) {
+    const status = await ensureDocument('departments', id, data);
+    summary.documentsCreatedOrUpdated.push(`departments.${id}:${status}`);
+  }
+
+  for (const item of demoProductSeeds) {
+    const status = await ensureDocument('products', item.id, item.data);
+    summary.documentsCreatedOrUpdated.push(`products.${item.id}:${status}`);
+  }
+
   for (const item of demoAssetSeeds) {
     const status = await ensureDocument(item.collection, item.id, item.data);
     summary.documentsCreatedOrUpdated.push(`${item.collection}.${item.id}:${status}`);
+  }
+
+  for (const item of demoBillSeeds) {
+    const status = await ensureDocument('bills', item.id, item.data);
+    summary.documentsCreatedOrUpdated.push(`bills.${item.id}:${status}`);
+  }
+
+  for (const item of demoBillItemSeeds) {
+    const status = await ensureDocument('bill_items', item.id, item.data);
+    summary.documentsCreatedOrUpdated.push(`bill_items.${item.id}:${status}`);
+  }
+
+  for (const item of demoTransferSeeds) {
+    const status = await ensureDocument('asset_transfers', item.id, item.data);
+    summary.documentsCreatedOrUpdated.push(`asset_transfers.${item.id}:${status}`);
+  }
+
+  for (const item of demoProcurementAuditSeeds) {
+    const status = await ensureDocument('procurement_audit_logs', item.id, item.data);
+    summary.documentsCreatedOrUpdated.push(`procurement_audit_logs.${item.id}:${status}`);
   }
 
   for (const item of demoRequestSeeds) {
@@ -529,7 +917,8 @@ async function main() {
     summary.documentsCreatedOrUpdated.push(`master_vendors.${id}:${status}`);
   }
 
-  summary.bucket = await ensureBucket();
+  summary.buckets.push(`asset-attachments:${await ensureBucket('asset-attachments', 'Asset Attachments')}`);
+  summary.buckets.push('invoice-attachments:uses-asset-attachments');
 
   console.log(JSON.stringify(summary, null, 2));
 }

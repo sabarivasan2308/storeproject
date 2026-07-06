@@ -9,10 +9,17 @@ export const APPWRITE_CONFIG = {
     ASSETS: 'assets',
     LOCATIONS: 'locations',
     REQUESTS: 'requests',
-    AUDIT_LOGS: 'audit_logs'
+    AUDIT_LOGS: 'audit_logs',
+    BILLS: 'bills',
+    BILL_ITEMS: 'bill_items',
+    PRODUCTS: 'products',
+    DEPARTMENTS: 'departments',
+    ASSET_TRANSFERS: 'asset_transfers',
+    PROCUREMENT_AUDIT_LOGS: 'procurement_audit_logs'
   },
   
   BUCKETS: {
-    ASSET_ATTACHMENTS: 'asset-attachments'
+    ASSET_ATTACHMENTS: 'asset-attachments',
+    INVOICE_ATTACHMENTS: 'asset-attachments'
   }
 };
