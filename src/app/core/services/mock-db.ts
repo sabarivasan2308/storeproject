@@ -1,70 +1,4 @@
-export interface AppUser {
-  email: string;
-  name: string;
-  role: 'Super Admin' | 'School Admin';
-  institution: string; // "All" or a specific institution like "AKCP"
-}
-
-export interface Location {
-  id: string;
-  institution: string;
-  building: string;
-  floor: string;
-  department: string;
-  room: string;
-}
-
-export interface Asset {
-  id: string; // Unique Asset ID
-  name: string;
-  category: string;
-  barcode: string;
-  qrCode: string;
-  brand: string;
-  model: string;
-  serialNumber: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-  purchaseDate: string;
-  purchaseOrder?: string;
-  billNumber?: string;
-  billDate?: string;
-  vendor: string;
-  warrantyDetails: string;
-  status: 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned' | 'Damaged';
-  remarks: string;
-  locationId: string; // reference to Location
-  locationText?: string; // Formatted location text
-  containerId?: string; // If placed inside a container (e.g. Fridge ID)
-  isContainer: boolean; // True for Fridge, Cabinet, Storage Rack, etc.
-}
-
-export interface VerificationRequest {
-  id: string;
-  schoolAdminEmail: string;
-  schoolAdminName: string;
-  institution: string;
-  assetId: string;
-  assetName: string;
-  changeType: 'Quantity Update' | 'Mark Damaged' | 'Mark Missing' | 'Add Asset' | 'Mark Active' | 'Mark Under Service' | 'Mark Condemned' | 'Status Update';
-  previousValue: string;
-  newValue: string;
-  reason: string;
-  status: 'Pending' | 'Approved' | 'Rejected';
-  timestamp: string;
-  comments?: string; // Super Admin comments
-}
-
-export interface AuditLog {
-  id: string;
-  date: string;
-  userEmail: string;
-  userName: string;
-  action: string;
-  details: string;
-  reason: string;
-}
+import { Vendor, ProcurementBill, ProductMaster, AssetTransfer, AppUser, Location, Asset, VerificationRequest, AuditLog } from '../models/types';
 
 // Initial Mock Seed Data
 const SEED_USERS: AppUser[] = [
@@ -725,6 +659,53 @@ const SEED_AUDIT_LOGS: AuditLog[] = [
   }
 ];
 
+const SEED_VENDORS: Vendor[] = [
+  { id: 'VEND-001', name: 'Dell Technologies India', gst: '29AAAAA0000A1Z5', address: 'Dell India, Bangalore, Karnataka', phone: '+91-80-60001111', email: 'sales@dell.co.in', website: 'https://dell.co.in', paymentTerms: 'Net 30', active: true },
+  { id: 'VEND-002', name: 'Laxmi Furniture House', gst: '33BBBBB1111B2Z6', address: '12, College Road, Madurai, Tamil Nadu', phone: '+91-452-2345678', email: 'laxmi.furniture@gmail.com', website: '', paymentTerms: 'Net 15', active: true },
+  { id: 'VEND-003', name: 'Standard Scientific Supplies', gst: '33CCCCC2222C3Z7', address: '45, Industrial Estate, Sivakasi, Tamil Nadu', phone: '+91-4562-223344', email: 'info@stdscientific.com', website: 'https://stdscientific.com', paymentTerms: 'Cash on Delivery', active: true }
+];
+
+const SEED_PRODUCTS: ProductMaster[] = [
+  { id: 'PROD-001', barcode: '8901234567890', name: 'Latitude 3440 Laptop', category: 'Computers', brand: 'Dell', model: 'Latitude 3440', manufacturer: 'Dell Inc.', specifications: 'Intel i5, 16GB RAM, 512GB SSD, 14" screen', suggestedWarranty: '36 Months', imageUrl: '', active: true },
+  { id: 'PROD-002', barcode: '8901234567891', name: 'Ergonomic Office Chair', category: 'Furniture', brand: 'Laxmi', model: 'Ergo-Comfort', manufacturer: 'Laxmi Furniture', specifications: 'Mesh back, adjustable height, lumbar support', suggestedWarranty: '12 Months', imageUrl: '', active: true },
+  { id: 'PROD-003', barcode: '8901234567892', name: 'Lab Autoclave Vertical', category: 'Medical Equipment', brand: 'Equitron', model: 'EQ-20', manufacturer: 'Equitron Med', specifications: '74 Liters, stainless steel, digital controller', suggestedWarranty: '24 Months', imageUrl: '', active: true }
+];
+
+const SEED_BILLS: ProcurementBill[] = [
+  {
+    id: 'BILL-001',
+    billNumber: 'DELL-2026-004',
+    purchaseOrderNumber: 'PO-2026-001',
+    invoiceNumber: 'INV-DELL-9988',
+    vendorId: 'VEND-001',
+    vendorName: 'Dell Technologies India',
+    schoolId: 'akcp',
+    schoolName: 'AKCP',
+    departmentId: 'AKCP:Biotechnology',
+    departmentName: 'Biotechnology',
+    purchaseDate: '2026-01-10',
+    billingDate: '2026-01-12',
+    gstPercent: 18,
+    gstAmount: 18000,
+    transportCharges: 1500,
+    packingCharges: 500,
+    insuranceCharges: 0,
+    otherCharges: 0,
+    discount: 2000,
+    subtotal: 100000,
+    grandTotal: 118000,
+    paymentStatus: 'Paid',
+    paymentMethod: 'Bank Transfer',
+    invoiceAttachmentIds: [],
+    remarks: 'Delivered and verified laptop batch.',
+    createdBy: 'super@kare.edu',
+    approvedBy: 'super@kare.edu',
+    approvalDate: '2026-01-13',
+    associatedAssetIds: ['FR-AKCP-BT-F1-001'],
+    createdAt: '2026-01-10T10:00:00Z'
+  }
+];
+
 export class MockDatabase {
   static init() {
     const storedUsers = localStorage.getItem('kare_users');
@@ -750,6 +731,10 @@ export class MockDatabase {
       localStorage.setItem('kare_assets', JSON.stringify(SEED_ASSETS));
       localStorage.setItem('kare_requests', JSON.stringify(SEED_REQUESTS));
       localStorage.setItem('kare_audit_logs', JSON.stringify(SEED_AUDIT_LOGS));
+      localStorage.setItem('kare_vendors', JSON.stringify(SEED_VENDORS));
+      localStorage.setItem('kare_products', JSON.stringify(SEED_PRODUCTS));
+      localStorage.setItem('kare_bills', JSON.stringify(SEED_BILLS));
+      localStorage.setItem('kare_transfers', JSON.stringify([]));
     } else {
       if (!localStorage.getItem('kare_users')) {
         localStorage.setItem('kare_users', JSON.stringify(SEED_USERS));
@@ -765,6 +750,18 @@ export class MockDatabase {
       }
       if (!localStorage.getItem('kare_audit_logs')) {
         localStorage.setItem('kare_audit_logs', JSON.stringify(SEED_AUDIT_LOGS));
+      }
+      if (!localStorage.getItem('kare_vendors')) {
+        localStorage.setItem('kare_vendors', JSON.stringify(SEED_VENDORS));
+      }
+      if (!localStorage.getItem('kare_products')) {
+        localStorage.setItem('kare_products', JSON.stringify(SEED_PRODUCTS));
+      }
+      if (!localStorage.getItem('kare_bills')) {
+        localStorage.setItem('kare_bills', JSON.stringify(SEED_BILLS));
+      }
+      if (!localStorage.getItem('kare_transfers')) {
+        localStorage.setItem('kare_transfers', JSON.stringify([]));
       }
     }
   }
@@ -845,5 +842,78 @@ export class MockDatabase {
     const logs = this.getAuditLogs();
     logs.unshift(log); // Add to top (newest first)
     localStorage.setItem('kare_audit_logs', JSON.stringify(logs));
+  }
+
+  // Vendors CRUD
+  static getVendors(): Vendor[] {
+    this.init();
+    return JSON.parse(localStorage.getItem('kare_vendors') || '[]');
+  }
+  static saveVendors(vendors: Vendor[]) {
+    localStorage.setItem('kare_vendors', JSON.stringify(vendors));
+  }
+  static addVendor(vendor: Vendor) {
+    const vendors = this.getVendors();
+    vendors.push(vendor);
+    this.saveVendors(vendors);
+  }
+  static updateVendor(updated: Vendor) {
+    const vendors = this.getVendors().map(v => v.id === updated.id ? updated : v);
+    this.saveVendors(vendors);
+  }
+  static deleteVendor(id: string) {
+    const vendors = this.getVendors().map(v => v.id === id ? { ...v, active: false } : v);
+    this.saveVendors(vendors);
+  }
+
+  // Products CRUD
+  static getProducts(): ProductMaster[] {
+    this.init();
+    return JSON.parse(localStorage.getItem('kare_products') || '[]');
+  }
+  static saveProducts(products: ProductMaster[]) {
+    localStorage.setItem('kare_products', JSON.stringify(products));
+  }
+  static addProduct(prod: ProductMaster) {
+    const prods = this.getProducts();
+    prods.push(prod);
+    this.saveProducts(prods);
+  }
+  static updateProduct(updated: ProductMaster) {
+    const prods = this.getProducts().map(p => p.id === updated.id ? updated : p);
+    this.saveProducts(prods);
+  }
+
+  // Bills CRUD
+  static getBills(): ProcurementBill[] {
+    this.init();
+    return JSON.parse(localStorage.getItem('kare_bills') || '[]');
+  }
+  static saveBills(bills: ProcurementBill[]) {
+    localStorage.setItem('kare_bills', JSON.stringify(bills));
+  }
+  static addBill(bill: ProcurementBill) {
+    const bills = this.getBills();
+    bills.push(bill);
+    this.saveBills(bills);
+  }
+  static updateBill(updated: ProcurementBill) {
+    const bills = this.getBills().map(b => b.id === updated.id ? updated : b);
+    this.saveBills(bills);
+  }
+
+  // Transfers CRUD
+  static getTransfers(assetId?: string): AssetTransfer[] {
+    this.init();
+    const list: AssetTransfer[] = JSON.parse(localStorage.getItem('kare_transfers') || '[]');
+    if (assetId) {
+      return list.filter(t => t.assetId === assetId);
+    }
+    return list;
+  }
+  static addTransfer(transfer: AssetTransfer) {
+    const list = this.getTransfers();
+    list.push(transfer);
+    localStorage.setItem('kare_transfers', JSON.stringify(list));
   }
 }
