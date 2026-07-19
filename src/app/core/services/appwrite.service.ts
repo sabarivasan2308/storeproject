@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { Client, Account, Databases, ID, Query, Teams, Storage } from 'appwrite';
+import { Client, Account, Databases, ID, Query, Teams, Storage, Permission, Role } from 'appwrite';
 import { APPWRITE_CONFIG } from '../config/appwrite.config';
 import { MockDatabase } from './mock-db';
 import {
@@ -32,6 +32,111 @@ export class AppwriteService {
   // State Signals
   isUsingMock = signal<boolean>(false);
   currentUser = signal<AppUser | null>(null);
+
+  async getCurrentUser(): Promise<AppUser | null> {
+    const user = this.currentUser();
+    if (user) return user;
+
+    const storedMock = localStorage.getItem('isUsingMock');
+    if (this.isUsingMock() || storedMock === 'true') {
+      const storedUser = localStorage.getItem('mockUser');
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          this.currentUser.set(parsed);
+          return parsed;
+        } catch {}
+      }
+      return null;
+    }
+
+    if (this.account) {
+      try {
+        const userSession = await this.account.get();
+        let role: 'Super Admin' | 'School Admin' = 'School Admin';
+        let institution = 'AKCP';
+
+        try {
+          const teamsList = await this.teams.list();
+          const teamIds = teamsList.teams.map(t => t.$id);
+
+          if (teamIds.includes('super_admin')) {
+            role = 'Super Admin';
+            institution = 'KARE';
+          } else {
+            role = 'School Admin';
+            const schoolTeam = teamIds.find(id => id.startsWith('school_'));
+            if (schoolTeam) {
+              institution = await this.getInstitutionNameForPrefix(schoolTeam.replace('school_', ''));
+            }
+          }
+        } catch (teamErr) {
+          try {
+            const userDoc = await this.databases.getDocument(
+              APPWRITE_CONFIG.DATABASE_ID,
+              APPWRITE_CONFIG.COLLECTIONS.USERS,
+              userSession.$id
+            );
+            role = userDoc['role'];
+            institution = userDoc['institution'];
+          } catch {
+            role = userSession.email.includes('super') ? 'Super Admin' : 'School Admin';
+          }
+        }
+
+        const loggedUser: AppUser = {
+          email: userSession.email,
+          name: userSession.name,
+          role,
+          institution
+        };
+        this.currentUser.set(loggedUser);
+        return loggedUser;
+      } catch (err) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  private getPermissionsForPrefix(prefix: string): string[] {
+    const normalizedPrefix = prefix.toLowerCase();
+    return [
+      Permission.read(Role.team('super_admin')),
+      Permission.read(Role.team(`school_${normalizedPrefix}`)),
+      Permission.create(Role.team('super_admin')),
+      Permission.create(Role.team(`school_${normalizedPrefix}`)),
+      Permission.update(Role.team('super_admin')),
+      Permission.update(Role.team(`school_${normalizedPrefix}`)),
+      Permission.delete(Role.team('super_admin')),
+      Permission.delete(Role.team(`school_${normalizedPrefix}`))
+    ];
+  }
+
+  private getCatalogPermissions(): string[] {
+    return [
+      Permission.read(Role.users()),
+      Permission.create(Role.users()),
+      Permission.update(Role.users()),
+      Permission.delete(Role.team('super_admin'))
+    ];
+  }
+
+  private enforceSchoolScope(institutionOrPrefix: string): void {
+    const user = this.currentUser();
+    if (!user) {
+      throw new Error('Unauthorized: No active user session.');
+    }
+    if (user.role === 'Super Admin') {
+      return;
+    }
+    const userPrefix = this.getPrefixForInstitution(user.institution);
+    const targetPrefix = this.getPrefixForInstitution(institutionOrPrefix);
+    if (userPrefix !== targetPrefix) {
+      throw new Error(`Unauthorized: Operation not permitted for institution ${institutionOrPrefix}.`);
+    }
+  }
+
   
   constructor() {
     // Synchronously restore mock session from localStorage before initializeService runs,
@@ -431,7 +536,8 @@ export class AppwriteService {
         APPWRITE_CONFIG.DATABASE_ID,
         'master_vendors',
         id,
-        data
+        data,
+        this.getCatalogPermissions()
       );
       return { ...vendor, ...data, id };
     }
@@ -586,17 +692,17 @@ export class AppwriteService {
       return all;
     }
     try {
+      const user = this.currentUser();
+      const queries = [Query.limit(100), Query.orderDesc('$createdAt')];
+      if (user?.role === 'School Admin') {
+        queries.push(Query.equal('schoolName', user.institution));
+      }
       const response = await this.databases.listDocuments(
         APPWRITE_CONFIG.DATABASE_ID,
         APPWRITE_CONFIG.COLLECTIONS.BILLS,
-        [Query.limit(100), Query.orderDesc('$createdAt')]
+        queries
       );
-      const bills = response.documents.map(d => this.mapBillDocument(d));
-      const user = this.currentUser();
-      if (user?.role === 'School Admin') {
-        return bills.filter(b => b.schoolName === user.institution);
-      }
-      return bills;
+      return response.documents.map(d => this.mapBillDocument(d));
     } catch (e) {
       console.error('Error loading bills:', e);
       return [];
@@ -810,7 +916,8 @@ export class AppwriteService {
       APPWRITE_CONFIG.DATABASE_ID,
       APPWRITE_CONFIG.COLLECTIONS.PRODUCTS,
       id,
-      data
+      data,
+      this.getCatalogPermissions()
     );
     return { ...product, ...data, id };
   }
@@ -856,7 +963,8 @@ export class AppwriteService {
         suggestedWarranty: item.warrantyDetails || '',
         imageUrl: '',
         active: true
-      }
+      },
+      this.getCatalogPermissions()
     );
     return productId;
   }
@@ -883,6 +991,7 @@ export class AppwriteService {
     remarks: string;
     items: ProcurementDraftItem[];
   }): Promise<ProcurementBill> {
+    this.enforceSchoolScope(input.schoolName);
     if (this.isUsingMock()) {
       const user = this.currentUser();
       const billId = 'BILL-' + Date.now();
@@ -1029,6 +1138,9 @@ export class AppwriteService {
     const grandTotal = lineSubtotal + lineGst + input.transportCharges + input.packingCharges + input.insuranceCharges + input.otherCharges - input.discount;
     const billNumber = `BILL-${this.getPrefixForInstitution(input.schoolName).toUpperCase()}-${Date.now()}`;
 
+    const prefix = this.getPrefixForInstitution(input.schoolName);
+    const permissions = this.getPermissionsForPrefix(prefix);
+
     await this.databases.createDocument(
       APPWRITE_CONFIG.DATABASE_ID,
       APPWRITE_CONFIG.COLLECTIONS.BILLS,
@@ -1064,7 +1176,8 @@ export class AppwriteService {
         approvalDate: '',
         associatedAssetIds: [],
         createdAt: now
-      }
+      },
+      permissions
     );
 
     const generatedAssetIds: string[] = [];
@@ -1143,7 +1256,8 @@ export class AppwriteService {
           warrantyDetails: item.warrantyDetails || '',
           locationId: item.locationId,
           generatedAssetIds: itemAssetIds
-        }
+        },
+        permissions
       );
     }
 
@@ -1159,7 +1273,8 @@ export class AppwriteService {
       action: 'Procurement Created',
       details: `${billNumber} created with ${items.length} product lines and ${generatedAssetIds.length} generated assets.`,
       userEmail: user?.email || 'system',
-      userName: user?.name || 'System'
+      userName: user?.name || 'System',
+      schoolName: input.schoolName
     });
 
     return {
@@ -1202,6 +1317,7 @@ export class AppwriteService {
     details: string;
     userEmail: string;
     userName: string;
+    schoolName?: string;
   }): Promise<void> {
     if (this.isUsingMock()) {
       MockDatabase.addAuditLog({
@@ -1216,6 +1332,8 @@ export class AppwriteService {
       return;
     }
     try {
+      const inst = log.schoolName || this.currentUser()?.institution || 'KARE';
+      const prefix = this.getPrefixForInstitution(inst);
       await this.databases.createDocument(
         APPWRITE_CONFIG.DATABASE_ID,
         APPWRITE_CONFIG.COLLECTIONS.PROCUREMENT_AUDIT_LOGS,
@@ -1227,7 +1345,8 @@ export class AppwriteService {
           userName: log.userName,
           action: log.action,
           details: log.details
-        }
+        },
+        this.getPermissionsForPrefix(prefix)
       );
     } catch (e) {
       console.error('Unable to write procurement audit log:', e);
@@ -1272,12 +1391,16 @@ export class AppwriteService {
     reason: string;
     approvedBy: string;
   }): Promise<void> {
+    const assetInst = input.asset.schoolId || input.asset.locationLabel || 'KARE';
+    this.enforceSchoolScope(assetInst);
+
     if (this.isUsingMock()) {
       const locs = MockDatabase.getLocations();
       const nextLocation = locs.find(l => l.id === input.toLocationId);
       if (!nextLocation) {
         throw new Error('Target location was not found.');
       }
+      this.enforceSchoolScope(nextLocation.institution);
       const user = this.currentUser();
       const updatedAsset: Asset = {
         ...input.asset,
@@ -1310,6 +1433,7 @@ export class AppwriteService {
     if (!nextLocation) {
       throw new Error('Target location was not found.');
     }
+    this.enforceSchoolScope(nextLocation.institution);
 
     const user = this.currentUser();
     const updatedAsset: Asset = {
@@ -1325,6 +1449,20 @@ export class AppwriteService {
     };
 
     await this.updateAsset(updatedAsset);
+
+    const fromPrefix = this.getPrefixForInstitution(assetInst);
+    const toPrefix = this.getPrefixForInstitution(nextLocation.institution);
+    const permissions = [
+      Permission.read(Role.team('super_admin')),
+      Permission.read(Role.team(`school_${fromPrefix}`)),
+      Permission.read(Role.team(`school_${toPrefix}`)),
+      Permission.create(Role.team('super_admin')),
+      Permission.create(Role.team(`school_${fromPrefix}`)),
+      Permission.update(Role.team('super_admin')),
+      Permission.update(Role.team(`school_${fromPrefix}`)),
+      Permission.delete(Role.team('super_admin'))
+    ];
+
     await this.databases.createDocument(
       APPWRITE_CONFIG.DATABASE_ID,
       APPWRITE_CONFIG.COLLECTIONS.ASSET_TRANSFERS,
@@ -1339,7 +1477,8 @@ export class AppwriteService {
         transferReason: input.reason,
         transferredBy: user?.email || 'system',
         approvedBy: input.approvedBy || user?.email || ''
-      }
+      },
+      permissions
     );
   }
 
@@ -1892,9 +2031,14 @@ export class AppwriteService {
   }
 
   async processRequest(requestId: string, approve: boolean, comments: string): Promise<void> {
+    const reviewer = this.currentUser();
+    if (!reviewer) {
+      throw new Error('Not authenticated');
+    }
+    if (reviewer.role !== 'Super Admin') {
+      throw new Error('Unauthorized: Only Super Admins can process verification requests.');
+    }
     if (this.isUsingMock()) {
-      const reviewer = this.currentUser();
-      if (!reviewer) return;
       
       const reqs = MockDatabase.getRequests();
       const reqData = reqs.find(r => r.id === requestId);
@@ -1944,9 +2088,6 @@ export class AppwriteService {
       });
       return;
     }
-    const reviewer = this.currentUser();
-    if (!reviewer) return;
-    
     const status = approve ? 'Approved' : 'Rejected';
     let foundCollId = '';
     let foundPrefix = '';

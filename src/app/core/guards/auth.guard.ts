@@ -2,10 +2,10 @@ import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
 import { AppwriteService } from '../services/appwrite.service';
 
-export const superAdminGuard: CanActivateFn = () => {
+export const superAdminGuard: CanActivateFn = async () => {
   const service = inject(AppwriteService);
   const router = inject(Router);
-  const user = service.currentUser();
+  const user = await service.getCurrentUser();
 
   if (user && user.role === 'Super Admin') {
     return true;
@@ -14,10 +14,10 @@ export const superAdminGuard: CanActivateFn = () => {
   return false;
 };
 
-export const schoolAdminGuard: CanActivateFn = () => {
+export const schoolAdminGuard: CanActivateFn = async () => {
   const service = inject(AppwriteService);
   const router = inject(Router);
-  const user = service.currentUser();
+  const user = await service.getCurrentUser();
 
   if (user && user.role === 'School Admin') {
     return true;
@@ -26,10 +26,10 @@ export const schoolAdminGuard: CanActivateFn = () => {
   return false;
 };
 
-export const loginGuard: CanActivateFn = () => {
+export const loginGuard: CanActivateFn = async () => {
   const service = inject(AppwriteService);
   const router = inject(Router);
-  const user = service.currentUser();
+  const user = await service.getCurrentUser();
 
   if (user) {
     if (user.role === 'Super Admin') {
