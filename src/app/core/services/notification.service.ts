@@ -11,6 +11,14 @@ export interface AppNotification {
   link?: string;
 }
 
+export interface ToastMessage {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'success' | 'danger';
+  duration?: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -27,7 +35,25 @@ export class NotificationService {
     }
   ]);
 
+  toasts = signal<ToastMessage[]>([]);
+
   unreadCount = computed(() => this.notifications().filter(n => !n.read).length);
+
+  showToast(title: string, message: string, type: 'info' | 'warning' | 'success' | 'danger' = 'info', duration: number = 4000): void {
+    const id = 'toast-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    const toast: ToastMessage = { id, title, message, type, duration };
+    this.toasts.update(current => [...current, toast]);
+
+    if (duration > 0) {
+      setTimeout(() => {
+        this.dismissToast(id);
+      }, duration);
+    }
+  }
+
+  dismissToast(id: string): void {
+    this.toasts.update(current => current.filter(t => t.id !== id));
+  }
 
   addNotification(notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'>): void {
     const newNotif: AppNotification = {
