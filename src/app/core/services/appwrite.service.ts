@@ -15,7 +15,9 @@ import {
   ProcurementBillItem,
   ProcurementDraftItem,
   ProductMaster,
-  AssetTransfer
+  AssetTransfer,
+  MaintenanceRecord,
+  WarrantyRecord
 } from '../models/types';
 
 @Injectable({
@@ -28,6 +30,7 @@ export class AppwriteService {
   private teams!: Teams;
   private storage!: Storage;
   private schoolCache: School[] = [];
+  private mockSubscribers: Array<{ channels: string[]; callback: (event: any) => void }> = [];
   
   // State Signals
   isUsingMock = signal<boolean>(false);
@@ -157,11 +160,90 @@ export class AppwriteService {
   }
 
   subscribeToRealtime(channels: string | string[], callback: (event: any) => void): () => void {
+    const channelList = Array.isArray(channels) ? channels : [channels];
     if (this.isUsingMock()) {
-      console.log('Realtime subscription skipped (Mock Mode). Channels:', channels);
-      return () => {};
+      console.log('Realtime subscription registered (Mock Mode). Channels:', channelList);
+      const sub = { channels: channelList, callback };
+      this.mockSubscribers.push(sub);
+      return () => {
+        this.mockSubscribers = this.mockSubscribers.filter(s => s !== sub);
+        console.log('Realtime subscription removed (Mock Mode). Channels:', channelList);
+      };
     }
-    return this.client.subscribe(channels, callback);
+    return this.client.subscribe(channelList, callback);
+  }
+
+  getRealtimeChannels(user: AppUser | null, schools: School[] = []): string[] {
+    if (!user) return [];
+    const dbId = APPWRITE_CONFIG.DATABASE_ID;
+    let prefixes: string[] = [];
+    
+    if (user.role === 'Super Admin') {
+      if (schools && schools.length > 0) {
+        prefixes = schools.map(s => this.getPrefixForInstitution(s.name));
+      } else {
+        prefixes = ['kare', 'akcp', 'vsp'];
+      }
+    } else {
+      const pref = this.getPrefixForInstitution(user.institution);
+      prefixes.push(pref);
+    }
+    
+    const uniquePrefixes = Array.from(new Set(prefixes));
+    const channels: string[] = [];
+    const baseColls = ['assets', 'consumables', 'furniture', 'requests', 'audit_logs', 'locations', 'bills', 'bill_items', 'asset_transfers'];
+    
+    for (const pref of uniquePrefixes) {
+      for (const base of baseColls) {
+        channels.push(`databases.${dbId}.collections.${pref}_${base}.documents`);
+      }
+    }
+    return channels;
+  }
+
+  public triggerMockRealtimeEvent(collectionBaseName: string, eventType: 'create' | 'update' | 'delete', payload: any, prefix?: string) {
+    if (!this.isUsingMock()) return;
+    
+    const dbId = APPWRITE_CONFIG.DATABASE_ID;
+    let targetPrefix = prefix;
+    if (!targetPrefix) {
+      if (payload.schoolId) {
+        targetPrefix = payload.schoolId;
+      } else if (payload.institution) {
+        targetPrefix = this.getPrefixForInstitution(payload.institution);
+      } else if (payload.locationText) {
+        const inst = payload.locationText.split(' - ')[0];
+        targetPrefix = this.getPrefixForInstitution(inst);
+      } else {
+        targetPrefix = this.currentUser() ? this.getPrefixForInstitution(this.currentUser()!.institution) : 'kare';
+      }
+    }
+    
+    const collectionId = `${targetPrefix}_${collectionBaseName}`;
+    const channel = `databases.${dbId}.collections.${collectionId}.documents`;
+    const docId = payload.$id || payload.id;
+    const docChannel = `databases.${dbId}.collections.${collectionId}.documents.${docId}`;
+    const eventName = `databases.${dbId}.collections.${collectionId}.documents.${docId}.${eventType}`;
+    
+    const event = {
+      events: [eventName],
+      channels: [channel, docChannel],
+      timestamp: new Date().toISOString(),
+      payload: {
+        ...payload,
+        $id: docId
+      }
+    };
+    
+    for (const sub of this.mockSubscribers) {
+      if (sub.channels.includes(channel) || sub.channels.includes(docChannel)) {
+        try {
+          sub.callback(event);
+        } catch (e) {
+          console.error('[Mock Realtime] Subscriber callback failed:', e);
+        }
+      }
+    }
   }
 
   private async initializeService() {
@@ -597,7 +679,7 @@ export class AppwriteService {
   }
 
   // Helper to determine prefix based on institution name
-  private getPrefixForInstitution(inst?: string): string {
+  public getPrefixForInstitution(inst?: string): string {
     const target = inst || this.currentUser()?.institution;
     if (!target) return 'kare';
     const name = target.toLowerCase();
@@ -776,6 +858,9 @@ export class AppwriteService {
         b.paymentStatus = paymentStatus;
         b.paymentMethod = paymentMethod;
         MockDatabase.saveBills(bills);
+        
+        const prefix = this.getPrefixForInstitution(b.schoolName);
+        this.triggerMockRealtimeEvent('bills', 'update', b, prefix);
       }
       const user = this.currentUser();
       await this.addProcurementAuditLog({
@@ -1073,6 +1158,10 @@ export class AppwriteService {
           };
           MockDatabase.addAsset(asset);
           generatedAssetIds.push(assetId);
+          
+          const prefix = this.getPrefixForInstitution(input.schoolName);
+          const { baseColl } = this.getAssetCollectionInfo(asset, locs);
+          this.triggerMockRealtimeEvent(baseColl, 'create', asset, prefix);
         }
       }
 
@@ -1110,7 +1199,10 @@ export class AppwriteService {
       };
       MockDatabase.addBill(bill);
 
-      MockDatabase.addAuditLog({
+      const prefix = this.getPrefixForInstitution(input.schoolName);
+      this.triggerMockRealtimeEvent('bills', 'create', bill, prefix);
+
+      const auditLog = {
         id: 'AUD-' + Date.now(),
         date: new Date().toISOString().replace('T', ' ').substring(0, 19),
         userEmail: user?.email || 'system',
@@ -1118,7 +1210,9 @@ export class AppwriteService {
         action: 'Procurement Created',
         details: `${billNumber} created with ${items.length} product lines and ${generatedAssetIds.length} generated assets.`,
         reason: 'Procurement form submission'
-      });
+      };
+      MockDatabase.addAuditLog(auditLog);
+      this.triggerMockRealtimeEvent('audit_logs', 'create', auditLog, prefix);
 
       return bill;
     }
@@ -1320,7 +1414,7 @@ export class AppwriteService {
     schoolName?: string;
   }): Promise<void> {
     if (this.isUsingMock()) {
-      MockDatabase.addAuditLog({
+      const auditLog = {
         id: 'AUD-' + Date.now(),
         date: new Date().toISOString().replace('T', ' ').substring(0, 19),
         userEmail: log.userEmail,
@@ -1328,7 +1422,12 @@ export class AppwriteService {
         action: log.action,
         details: log.details,
         reason: 'Procurement action'
-      });
+      };
+      MockDatabase.addAuditLog(auditLog);
+      
+      const inst = log.schoolName || this.currentUser()?.institution || 'KARE';
+      const prefix = this.getPrefixForInstitution(inst);
+      this.triggerMockRealtimeEvent('audit_logs', 'create', auditLog, prefix);
       return;
     }
     try {
@@ -1414,7 +1513,7 @@ export class AppwriteService {
         status: 'Transferred'
       };
       MockDatabase.updateAsset(updatedAsset);
-      MockDatabase.addTransfer({
+      const transferLog = {
         id: 'TR-' + Date.now(),
         assetId: input.asset.id,
         fromDepartmentId: input.asset.departmentId || '',
@@ -1425,7 +1524,17 @@ export class AppwriteService {
         transferReason: input.reason,
         transferredBy: user?.email || 'system',
         approvedBy: input.approvedBy || user?.email || ''
-      });
+      };
+      MockDatabase.addTransfer(transferLog);
+
+      const fromPrefix = this.getPrefixForInstitution(assetInst);
+      const toPrefix = this.getPrefixForInstitution(nextLocation.institution);
+      const { baseColl } = this.getAssetCollectionInfo(updatedAsset, locs);
+      
+      this.triggerMockRealtimeEvent(baseColl, 'update', updatedAsset, fromPrefix);
+      this.triggerMockRealtimeEvent(baseColl, 'create', updatedAsset, toPrefix);
+      this.triggerMockRealtimeEvent('asset_transfers', 'create', transferLog, fromPrefix);
+      this.triggerMockRealtimeEvent('asset_transfers', 'create', transferLog, toPrefix);
       return;
     }
     const locs = await this.getLocations();
@@ -1503,7 +1612,7 @@ export class AppwriteService {
     };
   }
 
-  private mapAssetDocument(d: any, locs: Location[]): Asset {
+  public mapAssetDocument(d: any, locs: Location[]): Asset {
     const asset: Asset = {
       id: d['id'],
       name: d['name'],
@@ -1543,6 +1652,38 @@ export class AppwriteService {
       asset.locationText = `${loc.institution} -> ${loc.building} -> ${loc.floor} -> ${loc.department} -> ${loc.room}`;
     }
     return asset;
+  }
+
+  public mapRequestDocument(d: any): VerificationRequest {
+    return {
+      id: d.$id || d.id,
+      schoolAdminEmail: d['schoolAdminEmail'],
+      schoolAdminName: d['schoolAdminName'],
+      institution: d['institution'],
+      assetId: d['assetId'],
+      assetName: d['assetName'],
+      changeType: d['changeType'],
+      previousValue: d['previousValue'],
+      newValue: d['newValue'],
+      reason: d['reason'],
+      status: d['status'],
+      timestamp: d['timestamp'],
+      comments: d['comments'] || '',
+      approverHistory: d['approverHistory'] || '[]',
+      rejectionReason: d['rejectionReason'] || ''
+    };
+  }
+
+  public mapAuditLogDocument(d: any): AuditLog {
+    return {
+      id: d.$id || d.id,
+      date: d['date'],
+      userEmail: d['userEmail'],
+      userName: d['userName'],
+      action: d['action'],
+      details: d['details'],
+      reason: d['reason'] || ''
+    };
   }
 
   private isPendingAddition(asset: Asset): boolean {
@@ -1652,6 +1793,8 @@ export class AppwriteService {
   async addLocation(loc: Location): Promise<void> {
     if (this.isUsingMock()) {
       MockDatabase.addLocation(loc);
+      const prefix = this.getPrefixForInstitution(loc.institution);
+      this.triggerMockRealtimeEvent('locations', 'create', loc, prefix);
       return;
     }
     await this.getSchools();
@@ -1725,16 +1868,23 @@ export class AppwriteService {
     if (this.isUsingMock()) {
       MockDatabase.addAsset(asset);
       const user = this.currentUser();
+      const auditLog = {
+        id: 'AUD-' + Date.now(),
+        date: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        userEmail: user ? user.email : 'system@mock.com',
+        userName: user ? user.name : 'System',
+        action: 'Added Asset',
+        details: `Asset ID: ${asset.id}, Name: ${asset.name}, Quantity: ${asset.quantity}`,
+        reason: 'Manual addition'
+      };
       if (user) {
-        MockDatabase.addAuditLog({
-          id: 'AUD-' + Date.now(),
-          date: new Date().toISOString().replace('T', ' ').substring(0, 19),
-          userEmail: user.email,
-          userName: user.name,
-          action: 'Added Asset',
-          details: `Asset ID: ${asset.id}, Name: ${asset.name}, Quantity: ${asset.quantity}`,
-          reason: 'Manual addition'
-        });
+        MockDatabase.addAuditLog(auditLog);
+      }
+      const locs = await this.getLocations();
+      const { prefix, baseColl } = this.getAssetCollectionInfo(asset, locs);
+      this.triggerMockRealtimeEvent(baseColl, 'create', asset, prefix);
+      if (user) {
+        this.triggerMockRealtimeEvent('audit_logs', 'create', auditLog, prefix);
       }
       return;
     }
@@ -1767,6 +1917,9 @@ export class AppwriteService {
   async addProposedAsset(asset: Asset): Promise<void> {
     if (this.isUsingMock()) {
       MockDatabase.addAsset(asset);
+      const locs = await this.getLocations();
+      const { prefix, baseColl } = this.getAssetCollectionInfo(asset, locs);
+      this.triggerMockRealtimeEvent(baseColl, 'create', asset, prefix);
       return;
     }
     const locs = await this.getLocations();
@@ -1783,6 +1936,9 @@ export class AppwriteService {
   async deleteProposedAsset(asset: Asset): Promise<void> {
     if (this.isUsingMock()) {
       MockDatabase.deleteAsset(asset.id);
+      const locs = await this.getLocations();
+      const { prefix, baseColl } = this.getAssetCollectionInfo(asset, locs);
+      this.triggerMockRealtimeEvent(baseColl, 'delete', asset, prefix);
       return;
     }
     const locs = await this.getLocations();
@@ -1796,6 +1952,29 @@ export class AppwriteService {
   }
 
   async updateAsset(asset: Asset): Promise<void> {
+    if (this.isUsingMock()) {
+      MockDatabase.updateAsset(asset);
+      const user = this.currentUser();
+      const auditLog = {
+        id: 'AUD-' + Date.now(),
+        date: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        userEmail: user ? user.email : 'system@mock.com',
+        userName: user ? user.name : 'System',
+        action: 'Updated Asset Details',
+        details: `Asset ID: ${asset.id}, Name: ${asset.name}`,
+        reason: 'Manual details update'
+      };
+      if (user) {
+        MockDatabase.addAuditLog(auditLog);
+      }
+      const locs = await this.getLocations();
+      const { prefix, baseColl } = this.getAssetCollectionInfo(asset, locs);
+      this.triggerMockRealtimeEvent(baseColl, 'update', asset, prefix);
+      if (user) {
+        this.triggerMockRealtimeEvent('audit_logs', 'create', auditLog, prefix);
+      }
+      return;
+    }
     const user = this.currentUser();
     const locs = await this.getLocations();
     const { collId } = this.getAssetCollectionInfo(asset, locs);
@@ -1864,16 +2043,23 @@ export class AppwriteService {
       if (asset) {
         MockDatabase.deleteAsset(id);
         const user = this.currentUser();
+        const auditLog = {
+          id: 'AUD-' + Date.now(),
+          date: new Date().toISOString().replace('T', ' ').substring(0, 19),
+          userEmail: user ? user.email : 'system@mock.com',
+          userName: user ? user.name : 'System',
+          action: 'Deleted Asset',
+          details: `Asset ID: ${id}, Name: ${asset.name}`,
+          reason: 'Manual deletion'
+        };
         if (user) {
-          MockDatabase.addAuditLog({
-            id: 'AUD-' + Date.now(),
-            date: new Date().toISOString().replace('T', ' ').substring(0, 19),
-            userEmail: user.email,
-            userName: user.name,
-            action: 'Deleted Asset',
-            details: `Asset ID: ${id}, Name: ${asset.name}`,
-            reason: 'Manual deletion'
-          });
+          MockDatabase.addAuditLog(auditLog);
+        }
+        const locs = await this.getLocations();
+        const { prefix, baseColl } = this.getAssetCollectionInfo(asset, locs);
+        this.triggerMockRealtimeEvent(baseColl, 'delete', asset, prefix);
+        if (user) {
+          this.triggerMockRealtimeEvent('audit_logs', 'create', auditLog, prefix);
         }
       }
       return;
@@ -1958,7 +2144,9 @@ export class AppwriteService {
           reason: d['reason'],
           status: d['status'],
           timestamp: d['timestamp'],
-          comments: d['comments'] || ''
+          comments: d['comments'] || '',
+          approverHistory: d['approverHistory'] || '[]',
+          rejectionReason: d['rejectionReason'] || ''
         }));
       } catch (e) {
         console.error(`Error fetching requests for ${prefix}:`, e);
@@ -1970,19 +2158,33 @@ export class AppwriteService {
     return results.flat();
   }
 
-  async submitRequest(req: Omit<VerificationRequest, 'id' | 'status' | 'timestamp'>): Promise<void> {
+  async submitRequest(req: Omit<VerificationRequest, 'id' | 'status' | 'timestamp'> & { status?: VerificationRequest['status'] }): Promise<void> {
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const requestId = 'REQ-' + Date.now();
+    const initialStatus = req.status || 'Pending Department';
+
+    const initialHistory = JSON.stringify([
+      {
+        status: initialStatus,
+        updatedBy: req.schoolAdminEmail,
+        updaterName: req.schoolAdminName,
+        timestamp,
+        comments: req.reason || 'Request submitted'
+      }
+    ]);
+
     if (this.isUsingMock()) {
-      const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-      const requestId = 'REQ-' + Date.now();
       const newReq: VerificationRequest = {
         ...req,
         id: requestId,
-        status: 'Pending',
+        status: initialStatus,
         timestamp,
-        comments: ''
+        comments: '',
+        approverHistory: initialHistory,
+        rejectionReason: ''
       };
       MockDatabase.addRequest(newReq);
-      MockDatabase.addAuditLog({
+      const auditLog = {
         id: 'AUD-' + Date.now(),
         date: timestamp,
         userEmail: req.schoolAdminEmail,
@@ -1990,11 +2192,14 @@ export class AppwriteService {
         action: `Submitted verification request: ${req.changeType}`,
         details: `Asset: ${req.assetName} (${req.assetId}). Diff: ${req.previousValue} -> ${req.newValue}`,
         reason: req.reason
-      });
+      };
+      MockDatabase.addAuditLog(auditLog);
+      
+      const prefix = this.getPrefixForInstitution(req.institution);
+      this.triggerMockRealtimeEvent('requests', 'create', newReq, prefix);
+      this.triggerMockRealtimeEvent('audit_logs', 'create', auditLog, prefix);
       return;
     }
-    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-    const requestId = 'REQ-' + Date.now();
     
     await this.getSchools();
     const prefix = this.getPrefixForInstitution(req.institution);
@@ -2013,9 +2218,11 @@ export class AppwriteService {
         previousValue: req.previousValue,
         newValue: req.newValue,
         reason: req.reason,
-        status: 'Pending',
+        status: initialStatus,
         timestamp,
-        comments: ''
+        comments: '',
+        approverHistory: initialHistory,
+        rejectionReason: ''
       }
     );
     
@@ -2039,21 +2246,55 @@ export class AppwriteService {
       throw new Error('Unauthorized: Only Super Admins can process verification requests.');
     }
     if (this.isUsingMock()) {
-      
       const reqs = MockDatabase.getRequests();
       const reqData = reqs.find(r => r.id === requestId);
       if (!reqData) return;
       
-      const status = approve ? 'Approved' : 'Rejected';
-      reqData.status = status;
+      const currentStatus = reqData.status;
+      let nextStatus: VerificationRequest['status'] = 'Pending';
+      if (approve) {
+        if (currentStatus === 'Pending Department') {
+          nextStatus = 'Pending Super Admin';
+        } else {
+          nextStatus = 'Approved';
+        }
+      } else {
+        nextStatus = 'Rejected';
+      }
+      
+      reqData.status = nextStatus;
       reqData.comments = comments;
+      if (!approve) {
+        reqData.rejectionReason = comments;
+      }
+      
+      // Append history
+      let historyList: any[] = [];
+      try {
+        historyList = JSON.parse(reqData.approverHistory || '[]');
+      } catch (e) {
+        historyList = [];
+      }
+      historyList.push({
+        status: nextStatus,
+        updatedBy: reviewer.email,
+        updaterName: reviewer.name,
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        comments: comments || (approve ? 'Approved stage' : 'Rejected request')
+      });
+      reqData.approverHistory = JSON.stringify(historyList);
+      
       MockDatabase.saveRequests(reqs);
       
-      const assetId = reqData.assetId;
-      const changeType = reqData.changeType;
-      const newValue = reqData.newValue;
+      const prefix = this.getPrefixForInstitution(reqData.institution);
+      this.triggerMockRealtimeEvent('requests', 'update', reqData, prefix);
       
-      if (approve) {
+      // If approved, update actual asset
+      if (nextStatus === 'Approved') {
+        const assetId = reqData.assetId;
+        const changeType = reqData.changeType;
+        const newValue = reqData.newValue;
+        
         const asset = MockDatabase.getAssetById(assetId);
         if (asset) {
           if (changeType === 'Quantity Update') {
@@ -2069,26 +2310,37 @@ export class AppwriteService {
             asset.remarks = (asset.remarks || '').replace('Approval Pending.', 'Approved.');
           }
           MockDatabase.updateAsset(asset);
+          
+          const locs = await this.getLocations();
+          const { prefix: assetPrefix, baseColl } = this.getAssetCollectionInfo(asset, locs);
+          this.triggerMockRealtimeEvent(baseColl, 'update', asset, assetPrefix);
         }
-      } else if (changeType === 'Add Asset') {
+      } else if (nextStatus === 'Rejected' && reqData.changeType === 'Add Asset') {
+        const assetId = reqData.assetId;
         const asset = MockDatabase.getAssetById(assetId);
         if (asset && asset.remarks.includes('Approval Pending.')) {
           MockDatabase.deleteAsset(assetId);
+          
+          const locs = await this.getLocations();
+          const { prefix: assetPrefix, baseColl } = this.getAssetCollectionInfo(asset, locs);
+          this.triggerMockRealtimeEvent(baseColl, 'delete', asset, assetPrefix);
         }
       }
       
-      MockDatabase.addAuditLog({
+      const auditLog = {
         id: 'AUD-' + Date.now(),
         date: new Date().toISOString().replace('T', ' ').substring(0, 19),
         userEmail: reviewer.email,
         userName: reviewer.name,
-        action: `${status} Verification Request`,
+        action: `${nextStatus} Verification Request`,
         details: `Request ID: ${requestId}. School Admin: ${reqData.schoolAdminName}. Comment: ${comments}`,
         reason: approve ? 'Approval criteria met' : 'Disapproved by Super Admin'
-      });
+      };
+      MockDatabase.addAuditLog(auditLog);
+      this.triggerMockRealtimeEvent('audit_logs', 'create', auditLog, prefix);
       return;
     }
-    const status = approve ? 'Approved' : 'Rejected';
+    
     let foundCollId = '';
     let foundPrefix = '';
     let reqData: any = null;
@@ -2110,19 +2362,52 @@ export class AppwriteService {
     }
     
     if (foundCollId && reqData) {
+      const currentStatus = reqData['status'];
+      let nextStatus: VerificationRequest['status'] = 'Pending';
+      if (approve) {
+        if (currentStatus === 'Pending Department') {
+          nextStatus = 'Pending Super Admin';
+        } else {
+          nextStatus = 'Approved';
+        }
+      } else {
+        nextStatus = 'Rejected';
+      }
+
+      // Append history
+      let historyList: any[] = [];
+      try {
+        historyList = JSON.parse(reqData['approverHistory'] || '[]');
+      } catch (e) {
+        historyList = [];
+      }
+      historyList.push({
+        status: nextStatus,
+        updatedBy: reviewer.email,
+        updaterName: reviewer.name,
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        comments: comments || (approve ? 'Approved stage' : 'Rejected request')
+      });
+
+      const updatePayload: any = {
+        status: nextStatus,
+        comments,
+        approverHistory: JSON.stringify(historyList),
+        rejectionReason: !approve ? comments : (reqData['rejectionReason'] || '')
+      };
+
       await this.databases.updateDocument(
         APPWRITE_CONFIG.DATABASE_ID,
         foundCollId,
         requestId,
-        { status, comments }
+        updatePayload
       );
       
       const assetId = reqData['assetId'];
       const changeType = reqData['changeType'];
       const newValue = reqData['newValue'];
       
-      if (approve) {
-        
+      if (nextStatus === 'Approved') {
         let foundAssetColl = '';
         let assetData: any = null;
         const allColls = ['assets', 'consumables', 'furniture'];
@@ -2170,7 +2455,7 @@ export class AppwriteService {
             updatedAsset
           );
         }
-      } else if (changeType === 'Add Asset') {
+      } else if (nextStatus === 'Rejected' && changeType === 'Add Asset') {
         const allColls = ['assets', 'consumables', 'furniture'];
         for (const type of allColls) {
           const testAssetColl = `${foundPrefix}_${type}`;
@@ -2197,7 +2482,7 @@ export class AppwriteService {
         date: new Date().toISOString().replace('T', ' ').substring(0, 19),
         userEmail: reviewer.email,
         userName: reviewer.name,
-        action: `${status} Verification Request`,
+        action: `${nextStatus} Verification Request`,
         details: `Request ID: ${requestId}. School Admin: ${reqData.schoolAdminName}. Comment: ${comments}`,
         reason: approve ? 'Approval criteria met' : 'Disapproved by Super Admin'
       });
@@ -2274,5 +2559,152 @@ export class AppwriteService {
         reason: log.reason || ''
       }
     );
+  }
+
+  // Maintenance Operations
+  async getMaintenanceRecords(): Promise<MaintenanceRecord[]> {
+    if (this.isUsingMock()) {
+      return MockDatabase.getMaintenanceRecords();
+    }
+    try {
+      const response = await this.databases.listDocuments(
+        APPWRITE_CONFIG.DATABASE_ID,
+        APPWRITE_CONFIG.COLLECTIONS.MAINTENANCE,
+        [Query.limit(100)]
+      );
+      return response.documents.map(d => ({
+        id: d.$id,
+        assetId: d['assetId'],
+        assetName: d['assetName'],
+        serviceDate: d['serviceDate'],
+        technicianName: d['technicianName'] || 'Service Dept',
+        technicianContact: d['technicianContact'] || '',
+        serviceType: d['serviceType'] || 'Preventive',
+        cost: d['cost'] || 0,
+        description: d['description'] || '',
+        status: d['status'] || 'Scheduled',
+        partsReplaced: d['partsReplaced'] || '',
+        nextDueDate: d['nextDueDate'] || '',
+        schoolId: d['schoolId'],
+        createdBy: d['createdBy'] || 'System',
+        createdAt: d['createdAt'] || new Date().toISOString()
+      }));
+    } catch (e) {
+      console.error('Error fetching maintenance records from Appwrite:', e);
+      return MockDatabase.getMaintenanceRecords();
+    }
+  }
+
+  async addMaintenanceRecord(record: Omit<MaintenanceRecord, 'id'>): Promise<MaintenanceRecord> {
+    if (this.isUsingMock()) {
+      return MockDatabase.addMaintenanceRecord(record);
+    }
+    const id = 'MNT-' + Date.now();
+    const newRecord: MaintenanceRecord = { id, ...record };
+    await this.databases.createDocument(
+      APPWRITE_CONFIG.DATABASE_ID,
+      APPWRITE_CONFIG.COLLECTIONS.MAINTENANCE,
+      id,
+      newRecord
+    );
+    return newRecord;
+  }
+
+  async updateMaintenanceRecord(record: MaintenanceRecord): Promise<MaintenanceRecord> {
+    if (this.isUsingMock()) {
+      return MockDatabase.updateMaintenanceRecord(record);
+    }
+    await this.databases.updateDocument(
+      APPWRITE_CONFIG.DATABASE_ID,
+      APPWRITE_CONFIG.COLLECTIONS.MAINTENANCE,
+      record.id,
+      record
+    );
+    return record;
+  }
+
+  async deleteMaintenanceRecord(id: string): Promise<boolean> {
+    if (this.isUsingMock()) {
+      return MockDatabase.deleteMaintenanceRecord(id);
+    }
+    await this.databases.deleteDocument(
+      APPWRITE_CONFIG.DATABASE_ID,
+      APPWRITE_CONFIG.COLLECTIONS.MAINTENANCE,
+      id
+    );
+    return true;
+  }
+
+  // Warranty Operations
+  async getWarrantyRecords(): Promise<WarrantyRecord[]> {
+    if (this.isUsingMock()) {
+      return MockDatabase.getWarrantyRecords();
+    }
+    try {
+      const response = await this.databases.listDocuments(
+        APPWRITE_CONFIG.DATABASE_ID,
+        APPWRITE_CONFIG.COLLECTIONS.WARRANTY,
+        [Query.limit(100)]
+      );
+      return response.documents.map(d => ({
+        id: d.$id,
+        assetId: d['assetId'],
+        assetName: d['assetName'],
+        provider: d['provider'] || '',
+        contactPerson: d['contactPerson'] || '',
+        phone: d['phone'] || d['contactPhone'] || '',
+        email: d['email'] || d['contactEmail'] || '',
+        startDate: d['startDate'] || '',
+        expiryDate: d['expiryDate'] || d['endDate'] || '',
+        amcCost: d['amcCost'] || 0,
+        terms: d['terms'] || d['coverageDetails'] || '',
+        schoolId: d['schoolId'],
+        renewalAlertSent: d['renewalAlertSent'] || false,
+        createdAt: d['createdAt'] || new Date().toISOString()
+      }));
+    } catch (e) {
+      console.error('Error fetching warranty records from Appwrite:', e);
+      return MockDatabase.getWarrantyRecords();
+    }
+  }
+
+  async addWarrantyRecord(record: Omit<WarrantyRecord, 'id'>): Promise<WarrantyRecord> {
+    if (this.isUsingMock()) {
+      return MockDatabase.addWarrantyRecord(record);
+    }
+    const id = 'WRN-' + Date.now();
+    const newRecord: WarrantyRecord = { id, ...record };
+    await this.databases.createDocument(
+      APPWRITE_CONFIG.DATABASE_ID,
+      APPWRITE_CONFIG.COLLECTIONS.WARRANTY,
+      id,
+      newRecord
+    );
+    return newRecord;
+  }
+
+  async updateWarrantyRecord(record: WarrantyRecord): Promise<WarrantyRecord> {
+    if (this.isUsingMock()) {
+      return MockDatabase.updateWarrantyRecord(record);
+    }
+    await this.databases.updateDocument(
+      APPWRITE_CONFIG.DATABASE_ID,
+      APPWRITE_CONFIG.COLLECTIONS.WARRANTY,
+      record.id,
+      record
+    );
+    return record;
+  }
+
+  async deleteWarrantyRecord(id: string): Promise<boolean> {
+    if (this.isUsingMock()) {
+      return MockDatabase.deleteWarrantyRecord(id);
+    }
+    await this.databases.deleteDocument(
+      APPWRITE_CONFIG.DATABASE_ID,
+      APPWRITE_CONFIG.COLLECTIONS.WARRANTY,
+      id
+    );
+    return true;
   }
 }

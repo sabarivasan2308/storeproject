@@ -71,6 +71,7 @@ export interface Asset {
   generatedFromProcurement?: boolean;
   vendor: string;
   warrantyDetails: string;
+  warrantyExpiry?: string;
   status: 'Idle' | 'Active' | 'Under Service' | 'Transferred' | 'Missing' | 'Condemned' | 'Damaged';
   remarks: string;
   locationId: string; // reference to Location
@@ -196,9 +197,11 @@ export interface VerificationRequest {
   previousValue: string;
   newValue: string;
   reason: string;
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: 'Draft' | 'Pending Department' | 'Pending Super Admin' | 'Approved' | 'Rejected' | 'Pending';
   timestamp: string;
   comments?: string; // Super Admin comments
+  approverHistory?: string; // JSON string of state transitions, comments, and action by user
+  rejectionReason?: string;
 }
 
 export interface AuditLog {
@@ -210,3 +213,65 @@ export interface AuditLog {
   details: string;
   reason: string;
 }
+
+export interface MaintenanceRecord {
+  id: string;
+  assetId: string;
+  assetName: string;
+  serviceDate: string;
+  technicianName: string;
+  technicianContact: string;
+  serviceType: 'Preventive' | 'Corrective' | 'Calibration' | 'Inspection';
+  cost: number;
+  description: string;
+  status: 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled';
+  partsReplaced?: string;
+  nextDueDate?: string;
+  schoolId?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface WarrantyRecord {
+  id: string;
+  assetId: string;
+  assetName: string;
+  provider: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  startDate: string;
+  expiryDate: string;
+  amcCost: number;
+  terms: string;
+  schoolId?: string;
+  renewalAlertSent: boolean;
+  createdAt: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  type: 'info' | 'warning' | 'error' | 'success' | 'Stock' | 'Warranty' | 'Maintenance' | 'Procurement' | 'System';
+  read: boolean;
+  priority?: 'High' | 'Medium' | 'Low';
+  severity?: 'error' | 'warning' | 'info' | 'success';
+  category?: 'Stock' | 'Warranty' | 'Maintenance' | 'Procurement' | 'System';
+}
+
+export interface AssetDepreciation {
+  originalCost: number;
+  accumulatedDepreciation: number;
+  currentValue: number;
+  depreciationMethod: 'Straight-Line' | 'Declining-Balance';
+  annualDepreciationRate: number;
+  salvageValue: number;
+  usefulLifeYears: number;
+  ageYears: number;
+  warrantyStatus: 'Active' | 'Expiring Soon' | 'Expired' | 'N/A';
+}
+
+export type AuditExportFormat = 'csv' | 'pdf' | 'excel';
+

@@ -1,4 +1,4 @@
-import { Vendor, ProcurementBill, ProductMaster, AssetTransfer, AppUser, Location, Asset, VerificationRequest, AuditLog } from '../models/types';
+import { Vendor, ProcurementBill, ProductMaster, AssetTransfer, AppUser, Location, Asset, VerificationRequest, AuditLog, MaintenanceRecord, WarrantyRecord } from '../models/types';
 
 // Initial Mock Seed Data
 const SEED_USERS: AppUser[] = [
@@ -642,8 +642,26 @@ const SEED_REQUESTS: VerificationRequest[] = [
     previousValue: '120 Units',
     newValue: '115 Units',
     reason: '5 bottles damaged during laboratory practicals',
-    status: 'Pending',
-    timestamp: '2026-06-18 14:32:00'
+    status: 'Pending Super Admin',
+    timestamp: '2026-06-18 14:32:00',
+    comments: '',
+    approverHistory: JSON.stringify([
+      {
+        status: 'Pending Department',
+        updatedBy: 'akcp@kare.edu',
+        updaterName: 'Prof. Ramesh Patel',
+        timestamp: '2026-06-18 14:32:00',
+        comments: 'Request created'
+      },
+      {
+        status: 'Pending Super Admin',
+        updatedBy: 'akcp-dept@kare.edu',
+        updaterName: 'Dr. Head of Biotech',
+        timestamp: '2026-06-18 15:00:00',
+        comments: 'Approved by department head'
+      }
+    ]),
+    rejectionReason: ''
   }
 ];
 
@@ -706,6 +724,105 @@ const SEED_BILLS: ProcurementBill[] = [
   }
 ];
 
+const SEED_TRANSFERS: AssetTransfer[] = [
+  {
+    id: 'TRF-001',
+    assetId: 'FR-AKCP-BT-F1-001',
+    fromDepartmentId: 'LOC-001',
+    fromDepartmentName: 'Biotechnology',
+    toDepartmentId: 'LOC-001',
+    toDepartmentName: 'Biotechnology',
+    transferDate: '2025-01-10 11:00:00',
+    transferReason: 'Initial placement on receipt',
+    transferredBy: 'super@kare.edu',
+    approvedBy: 'super@kare.edu'
+  },
+  {
+    id: 'TRF-002',
+    assetId: 'REF-CSHM-BTK-001',
+    fromDepartmentId: 'LOC-CSHM-001',
+    fromDepartmentName: 'Catering Science',
+    toDepartmentId: 'LOC-CSHM-001',
+    toDepartmentName: 'Catering Science',
+    transferDate: '2023-08-12 10:00:00',
+    transferReason: 'Initial setup in Basic Training Kitchen',
+    transferredBy: 'super@kare.edu',
+    approvedBy: 'super@kare.edu'
+  }
+];
+
+const SEED_MAINTENANCE: MaintenanceRecord[] = [
+  {
+    id: 'MNT-001',
+    assetId: 'CP-AKCP-CSE-001',
+    assetName: 'Dell OptiPlex 7090 Desktop',
+    serviceDate: '2026-03-15',
+    technicianName: 'Suresh Service Team',
+    technicianContact: '+91 98765 43210',
+    serviceType: 'Preventive',
+    cost: 1500,
+    description: 'Routine RAM & cooling fan cleaning and thermal paste re-application.',
+    status: 'Completed',
+    partsReplaced: 'Thermal Paste, Dust Filters',
+    nextDueDate: '2026-09-15',
+    schoolId: 'AKCP',
+    createdBy: 'super@kare.edu',
+    createdAt: '2026-03-15T10:00:00Z'
+  },
+  {
+    id: 'MNT-002',
+    assetId: 'MM-CSHM-BTK-010',
+    assetName: 'Meat Mincer',
+    serviceDate: '2026-06-01',
+    technicianName: 'Hobart Care Technician',
+    technicianContact: '+91 91234 56789',
+    serviceType: 'Corrective',
+    cost: 4500,
+    description: 'Motor gear alignment and blade sharpening.',
+    status: 'In Progress',
+    partsReplaced: 'Blade Assembly',
+    nextDueDate: '2026-12-01',
+    schoolId: 'CSHM',
+    createdBy: 'cshm@kare.edu',
+    createdAt: '2026-06-01T14:30:00Z'
+  }
+];
+
+const SEED_WARRANTY: WarrantyRecord[] = [
+  {
+    id: 'WAR-001',
+    assetId: 'CP-AKCP-CSE-001',
+    assetName: 'Dell OptiPlex 7090 Desktop',
+    provider: 'Dell India Pvt Ltd',
+    contactPerson: 'Karan Sharma',
+    phone: '1800-425-4026',
+    email: 'support@dell.co.in',
+    startDate: '2024-01-15',
+    expiryDate: '2027-01-15',
+    amcCost: 12000,
+    terms: '3-Year On-Site ProSupport Plus with Accidental Damage Protection',
+    schoolId: 'AKCP',
+    renewalAlertSent: false,
+    createdAt: '2024-01-15T00:00:00Z'
+  },
+  {
+    id: 'WAR-002',
+    assetId: 'MM-CSHM-BTK-010',
+    assetName: 'Meat Mincer',
+    provider: 'Hobart Equipment India',
+    contactPerson: 'Anil Mehta',
+    phone: '044-24567890',
+    email: 'service@hobart.in',
+    startDate: '2025-05-10',
+    expiryDate: '2026-08-10',
+    amcCost: 8500,
+    terms: 'Annual Preventive Maintenance Contract (2 Free Inspections/Year)',
+    schoolId: 'CSHM',
+    renewalAlertSent: true,
+    createdAt: '2025-05-10T00:00:00Z'
+  }
+];
+
 export class MockDatabase {
   static init() {
     const storedUsers = localStorage.getItem('kare_users');
@@ -734,7 +851,9 @@ export class MockDatabase {
       localStorage.setItem('kare_vendors', JSON.stringify(SEED_VENDORS));
       localStorage.setItem('kare_products', JSON.stringify(SEED_PRODUCTS));
       localStorage.setItem('kare_bills', JSON.stringify(SEED_BILLS));
-      localStorage.setItem('kare_transfers', JSON.stringify([]));
+      localStorage.setItem('kare_transfers', JSON.stringify(SEED_TRANSFERS));
+      localStorage.setItem('kare_maintenance', JSON.stringify(SEED_MAINTENANCE));
+      localStorage.setItem('kare_warranty', JSON.stringify(SEED_WARRANTY));
     } else {
       if (!localStorage.getItem('kare_users')) {
         localStorage.setItem('kare_users', JSON.stringify(SEED_USERS));
@@ -761,7 +880,13 @@ export class MockDatabase {
         localStorage.setItem('kare_bills', JSON.stringify(SEED_BILLS));
       }
       if (!localStorage.getItem('kare_transfers')) {
-        localStorage.setItem('kare_transfers', JSON.stringify([]));
+        localStorage.setItem('kare_transfers', JSON.stringify(SEED_TRANSFERS));
+      }
+      if (!localStorage.getItem('kare_maintenance')) {
+        localStorage.setItem('kare_maintenance', JSON.stringify(SEED_MAINTENANCE));
+      }
+      if (!localStorage.getItem('kare_warranty')) {
+        localStorage.setItem('kare_warranty', JSON.stringify(SEED_WARRANTY));
       }
     }
   }
@@ -915,5 +1040,65 @@ export class MockDatabase {
     const list = this.getTransfers();
     list.push(transfer);
     localStorage.setItem('kare_transfers', JSON.stringify(list));
+  }
+
+  // Maintenance CRUD
+  static getMaintenanceRecords(schoolId?: string): MaintenanceRecord[] {
+    this.init();
+    const list: MaintenanceRecord[] = JSON.parse(localStorage.getItem('kare_maintenance') || '[]');
+    if (schoolId && schoolId !== 'All') {
+      return list.filter(m => m.schoolId === schoolId);
+    }
+    return list;
+  }
+  static saveMaintenanceRecords(records: MaintenanceRecord[]) {
+    localStorage.setItem('kare_maintenance', JSON.stringify(records));
+  }
+  static addMaintenanceRecord(rec: Omit<MaintenanceRecord, 'id'> | MaintenanceRecord): MaintenanceRecord {
+    const list = this.getMaintenanceRecords();
+    const fullRec: MaintenanceRecord = 'id' in rec && rec.id ? (rec as MaintenanceRecord) : { id: 'MNT-' + Date.now(), ...rec };
+    list.push(fullRec);
+    this.saveMaintenanceRecords(list);
+    return fullRec;
+  }
+  static updateMaintenanceRecord(updated: MaintenanceRecord): MaintenanceRecord {
+    const list = this.getMaintenanceRecords().map(m => m.id === updated.id ? updated : m);
+    this.saveMaintenanceRecords(list);
+    return updated;
+  }
+  static deleteMaintenanceRecord(id: string): boolean {
+    const list = this.getMaintenanceRecords().filter(m => m.id !== id);
+    this.saveMaintenanceRecords(list);
+    return true;
+  }
+
+  // Warranty CRUD
+  static getWarrantyRecords(schoolId?: string): WarrantyRecord[] {
+    this.init();
+    const list: WarrantyRecord[] = JSON.parse(localStorage.getItem('kare_warranty') || '[]');
+    if (schoolId && schoolId !== 'All') {
+      return list.filter(w => w.schoolId === schoolId);
+    }
+    return list;
+  }
+  static saveWarrantyRecords(records: WarrantyRecord[]) {
+    localStorage.setItem('kare_warranty', JSON.stringify(records));
+  }
+  static addWarrantyRecord(rec: Omit<WarrantyRecord, 'id'> | WarrantyRecord): WarrantyRecord {
+    const list = this.getWarrantyRecords();
+    const fullRec: WarrantyRecord = 'id' in rec && rec.id ? (rec as WarrantyRecord) : { id: 'WRN-' + Date.now(), ...rec };
+    list.push(fullRec);
+    this.saveWarrantyRecords(list);
+    return fullRec;
+  }
+  static updateWarrantyRecord(updated: WarrantyRecord): WarrantyRecord {
+    const list = this.getWarrantyRecords().map(w => w.id === updated.id ? updated : w);
+    this.saveWarrantyRecords(list);
+    return updated;
+  }
+  static deleteWarrantyRecord(id: string): boolean {
+    const list = this.getWarrantyRecords().filter(w => w.id !== id);
+    this.saveWarrantyRecords(list);
+    return true;
   }
 }

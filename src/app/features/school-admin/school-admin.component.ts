@@ -1,14 +1,30 @@
-import { Component, OnInit, signal, computed, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AppwriteService } from '../../core/services/appwrite.service';
-import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../../core/models/types';
+import { ExportService } from '../../core/services/export.service';
+import { DepreciationService } from '../../core/services/depreciation.service';
+import { NotificationService } from '../../core/services/notification.service';
+import { ThemeService } from '../../core/services/theme.service';
+import { Asset, Location, VerificationRequest, MasterOption, Vendor, AssetTransfer } from '../../core/models/types';
+import { MovementTimelineComponent } from '../shared/components/movement-timeline.component';
+import { QRScannerSimComponent } from '../shared/components/qr-scanner-sim.component';
+import { NotificationCenterComponent } from '../shared/components/notification-center.component';
+import { PaginationComponent } from '../shared/components/pagination.component';
+import { StatCardComponent } from '../shared/components/stat-card.component';
 
 @Component({
   selector: 'app-school-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule, 
+    FormsModule, 
+    MovementTimelineComponent, 
+    QRScannerSimComponent,
+    NotificationCenterComponent,
+    PaginationComponent
+  ],
   template: `
     <div class="dashboard-container">
       <!-- Sidebar Navigation -->
@@ -54,6 +70,31 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
 
       <!-- Main Panel Area -->
       <main class="main-content">
+        <!-- Top Header Bar -->
+        <header class="top-header-bar flex items-center justify-between p-4 mb-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+          <div class="flex items-center gap-3">
+            <h1 class="text-lg font-bold text-slate-800 dark:text-slate-100">{{ institutionName() }} Portal</h1>
+            <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300">
+              School Admin
+            </span>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button 
+              type="button" 
+              (click)="themeService.toggleTheme()" 
+              class="p-2 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+              [title]="themeService.isDarkMode() ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
+              @if (themeService.isDarkMode()) {
+                <span class="text-lg">☀️</span>
+              } @else {
+                <span class="text-lg">🌙</span>
+              }
+            </button>
+
+            <app-notification-center></app-notification-center>
+          </div>
+        </header>
 
 
         <!-- 1. OVERVIEW DASHBOARD -->
@@ -146,9 +187,17 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
           <div class="tab-content fade-in">
             <div class="action-header">
               <h1 class="display-header page-heading">Assets Directory</h1>
-              <button class="btn btn-primary" (click)="openAddAssetModal()">
-                Add New Asset
-              </button>
+              <div class="action-buttons-group" style="display: flex; gap: 12px;">
+                <button class="btn btn-secondary" (click)="exportService.exportAssetsToCsv(filteredAssets())">
+                  Export CSV 📥
+                </button>
+                <button class="btn btn-secondary" (click)="showScannerModal.set(true)">
+                  Scan Asset QR 📷
+                </button>
+                <button class="btn btn-primary" (click)="openAddAssetModal()">
+                  Add New Asset
+                </button>
+              </div>
             </div>
 
             <!-- Category Filter Bar -->
@@ -199,13 +248,15 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
                       <th (click)="toggleSort('category')" class="sortable-header">Category <span class="sort-indicator">{{ getSortIcon('category') }}</span></th>
                       <th (click)="toggleSort('quantity')" class="sortable-header">Quantity <span class="sort-indicator">{{ getSortIcon('quantity') }}</span></th>
                       <th (click)="toggleSort('totalPrice')" class="sortable-header">Total Value <span class="sort-indicator">{{ getSortIcon('totalPrice') }}</span></th>
+                      <th>Net Book Value</th>
+                      <th>Warranty</th>
                       <th (click)="toggleSort('vendor')" class="sortable-header">Vendor <span class="sort-indicator">{{ getSortIcon('vendor') }}</span></th>
                       <th (click)="toggleSort('status')" class="sortable-header">Status <span class="sort-indicator">{{ getSortIcon('status') }}</span></th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    @for (asset of filteredAssets(); track asset.id) {
+                    @for (asset of paginatedAssets(); track asset.id) {
                       <tr>
                         <td><code>{{ asset.id }}</code></td>
                         <td>
@@ -224,6 +275,15 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
                         <td>{{ asset.category }}</td>
                         <td>{{ asset.quantity }}</td>
                         <td>₹{{ asset.totalPrice | number }}</td>
+                        <td>₹{{ depreciationService.calculateDepreciation(asset).currentValue | number }}</td>
+                        <td>
+                          @switch (depreciationService.calculateDepreciation(asset).warrantyStatus) {
+                            @case ('Active') { <span class="badge badge-green">Active</span> }
+                            @case ('Expiring Soon') { <span class="badge badge-orange animate-pulse">Expiring Soon</span> }
+                            @case ('Expired') { <span class="badge badge-red">Expired</span> }
+                            @default { <span class="badge badge-gray">N/A</span> }
+                          }
+                        </td>
                         <td>{{ asset.vendor || '-' }}</td>
                         <td>
                           <span class="badge" 
@@ -238,7 +298,7 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
                         </td>
                         <td>
                           <div class="action-buttons">
-                            <button class="btn btn-secondary btn-icon" (click)="selectedDrawerAsset.set(asset)" title="View Details">View</button>
+                            <button class="btn btn-secondary btn-icon" (click)="viewAssetDetails(asset)" title="View Details">View</button>
                             <button class="btn btn-secondary btn-icon" (click)="openRequestModal(asset, 'Quantity Update')" title="Update Stock">🔢</button>
                             <button class="btn btn-secondary btn-icon" (click)="openRequestModal(asset, 'Status Update')" title="Update Status">⚙️</button>
                           </div>
@@ -252,6 +312,15 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
                   </tbody>
                 </table>
               </div>
+
+              <!-- Pagination -->
+              <app-pagination
+                [currentPage]="assetPage()"
+                [pageSize]="assetPageSize()"
+                [totalItems]="filteredAssets().length"
+                (pageChange)="assetPage.set($event)"
+                (pageSizeChange)="assetPageSize.set($event); assetPage.set(1)">
+              </app-pagination>
             </div>
           </div>
         }
@@ -801,6 +870,11 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
             </div>
           </div>
 
+          <div class="detail-section">
+            <h3>Transfer History & Custody Timeline</h3>
+            <app-movement-timeline [transfers]="assetTransfers()"></app-movement-timeline>
+          </div>
+
           <div class="detail-section" *ngIf="asset.remarks">
             <h3>Remarks</h3>
             <p class="remarks-text">{{ asset.remarks }}</p>
@@ -808,6 +882,12 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
         </div>
       </aside>
     }
+
+    <app-qr-scanner-sim 
+      [active]="showScannerModal()" 
+      (close)="showScannerModal.set(false)" 
+      (assetUpdated)="loadData()"
+    ></app-qr-scanner-sim>
   `,
   styles: [`
     /* Reused layout styles similar to super-admin */
@@ -1307,17 +1387,34 @@ import { Asset, Location, VerificationRequest, MasterOption, Vendor } from '../.
     }
   `]
 })
-export class SchoolAdminComponent implements OnInit {
+export class SchoolAdminComponent implements OnInit, OnDestroy {
+  public themeService = inject(ThemeService);
+  public exportService = inject(ExportService);
+  public depreciationService = inject(DepreciationService);
+  public notificationService = inject(NotificationService);
+
+  // Pagination Signals
+  assetPage = signal<number>(1);
+  assetPageSize = signal<number>(10);
+  paginatedAssets = computed(() => {
+    const page = this.assetPage();
+    const size = this.assetPageSize();
+    return this.filteredAssets().slice((page - 1) * size, page * size);
+  });
+
   // Navigation State
   activeTab = signal<string>('overview');
   userName = signal<string>('Prof. Ramesh Patel');
   userEmail = signal<string>('akcp@kare.edu');
   institutionName = signal<string>('AKCP');
+  realtimeSubscription: (() => void) | null = null;
   
   // Sorting & Drawer State
   sortColumn = signal<string>('id');
   sortAscending = signal<boolean>(true);
   selectedDrawerAsset = signal<Asset | null>(null);
+  assetTransfers = signal<AssetTransfer[]>([]);
+  showScannerModal = signal<boolean>(false);
 
   // Data Signals
   assets = signal<Asset[]>([]);
@@ -1397,6 +1494,94 @@ export class SchoolAdminComponent implements OnInit {
     }
     
     await this.loadData();
+
+    const channels = this.appwriteService.getRealtimeChannels(user);
+    this.realtimeSubscription = this.appwriteService.subscribeToRealtime(channels, (event) => {
+      this.handleRealtimeEvent(event);
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.realtimeSubscription) {
+      this.realtimeSubscription();
+      this.realtimeSubscription = null;
+    }
+  }
+
+  private handleRealtimeEvent(event: any) {
+    if (!event || !event.events || event.events.length === 0) return;
+    
+    const eventStr = event.events[0];
+    const parts = eventStr.split('.');
+    if (parts.length < 7) return;
+    const collectionId = parts[3];
+    const eventType = parts[6];
+    const docPayload = event.payload;
+
+    const baseColls = ['assets', 'consumables', 'furniture', 'requests', 'locations'];
+    let collectionBaseName = '';
+    for (const base of baseColls) {
+      if (collectionId.endsWith(`_${base}`)) {
+        collectionBaseName = base;
+        break;
+      }
+    }
+    
+    if (!collectionBaseName) return;
+
+    const instName = this.institutionName();
+    
+    switch (collectionBaseName) {
+      case 'assets':
+      case 'furniture':
+      case 'consumables': {
+        const mapped = this.appwriteService.mapAssetDocument(docPayload, this.locations());
+        if (mapped.locationText?.startsWith(instName) || mapped.schoolId === this.appwriteService.getPrefixForInstitution(instName)) {
+          this.updateLocalList(this.assets, mapped, eventType);
+        }
+        break;
+      }
+      case 'requests': {
+        const mapped = this.appwriteService.mapRequestDocument(docPayload);
+        if (mapped.institution === instName) {
+          this.updateLocalList(this.requests, mapped, eventType);
+        }
+        break;
+      }
+      case 'locations': {
+        if (docPayload.institution === instName) {
+          const mapped: Location = {
+            id: docPayload.id || docPayload.$id,
+            institution: docPayload.institution,
+            department: docPayload.department,
+            building: docPayload.building,
+            room: docPayload.room,
+            floor: docPayload.floor || ''
+          };
+          this.updateLocalList(this.locations, mapped, eventType);
+        }
+        break;
+      }
+    }
+  }
+
+  private updateLocalList<T extends { id: string }>(signalRef: any, item: T, eventType: string) {
+    const list = [...signalRef()];
+    if (eventType === 'create') {
+      if (!list.some(x => x.id === item.id)) {
+        signalRef.set([item, ...list]);
+      }
+    } else if (eventType === 'update') {
+      const idx = list.findIndex(x => x.id === item.id);
+      if (idx !== -1) {
+        list[idx] = item;
+        signalRef.set(list);
+      } else {
+        signalRef.set([item, ...list]);
+      }
+    } else if (eventType === 'delete') {
+      signalRef.set(list.filter(x => x.id !== item.id));
+    }
   }
 
   async loadData() {
@@ -1568,6 +1753,17 @@ export class SchoolAdminComponent implements OnInit {
     item.reason = ''; // clear
     await this.loadData();
     this.loadAuditAssets();
+  }
+
+  async viewAssetDetails(asset: Asset) {
+    this.selectedDrawerAsset.set(asset);
+    this.assetTransfers.set([]);
+    try {
+      const transfers = await this.appwriteService.getAssetTransfers(asset.id);
+      this.assetTransfers.set(transfers);
+    } catch (e) {
+      console.error('Error fetching asset transfers:', e);
+    }
   }
 
   // Propose New Asset Modal

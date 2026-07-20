@@ -1,0 +1,61 @@
+import { Injectable, signal, computed } from '@angular/core';
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'success' | 'danger';
+  category: 'request' | 'warranty' | 'maintenance' | 'system';
+  timestamp: string;
+  read: boolean;
+  link?: string;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class NotificationService {
+  notifications = signal<AppNotification[]>([
+    {
+      id: 'notif-1',
+      title: 'System Initialized',
+      message: 'KARE Enterprise EAMP Realtime engine active.',
+      type: 'info',
+      category: 'system',
+      timestamp: new Date().toISOString(),
+      read: false
+    }
+  ]);
+
+  unreadCount = computed(() => this.notifications().filter(n => !n.read).length);
+
+  addNotification(notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'>): void {
+    const newNotif: AppNotification = {
+      ...notif,
+      id: 'notif-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+    this.notifications.update(current => [newNotif, ...current]);
+  }
+
+  markAsRead(id: string): void {
+    this.notifications.update(current =>
+      current.map(n => n.id === id ? { ...n, read: true } : n)
+    );
+  }
+
+  markAllAsRead(): void {
+    this.notifications.update(current =>
+      current.map(n => ({ ...n, read: true }))
+    );
+  }
+
+  removeNotification(id: string): void {
+    this.notifications.update(current => current.filter(n => n.id !== id));
+  }
+
+  clearAll(): void {
+    this.notifications.set([]);
+  }
+}

@@ -1,8 +1,17 @@
-import { Component, OnInit, signal, computed, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AppwriteService } from '../../core/services/appwrite.service';
+import { ExportService } from '../../core/services/export.service';
+import { DepreciationService } from '../../core/services/depreciation.service';
+import { NotificationService } from '../../core/services/notification.service';
+import { ThemeService } from '../../core/services/theme.service';
+import { MovementTimelineComponent } from '../shared/components/movement-timeline.component';
+import { QRScannerSimComponent } from '../shared/components/qr-scanner-sim.component';
+import { NotificationCenterComponent } from '../shared/components/notification-center.component';
+import { PaginationComponent } from '../shared/components/pagination.component';
+import { StatCardComponent } from '../shared/components/stat-card.component';
 import {
   Asset,
   Location,
@@ -21,7 +30,14 @@ import {
 @Component({
   selector: 'app-super-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule, 
+    FormsModule, 
+    MovementTimelineComponent, 
+    QRScannerSimComponent,
+    NotificationCenterComponent,
+    PaginationComponent
+  ],
   template: `
     <div class="dashboard-container">
       <!-- Sidebar Navigation -->
@@ -74,8 +90,33 @@ import {
         </div>
       </aside>
 
-      <!-- Main Panel Area -->
+      <!-- Main Content -->
       <main class="main-content">
+        <!-- Top Header Bar -->
+        <header class="top-header-bar flex items-center justify-between p-4 mb-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+          <div class="flex items-center gap-3">
+            <h1 class="text-lg font-bold text-slate-800 dark:text-slate-100">KARE Enterprise Asset Management</h1>
+            <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
+              Super Admin
+            </span>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button 
+              type="button" 
+              (click)="themeService.toggleTheme()" 
+              class="p-2 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+              [title]="themeService.isDarkMode() ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
+              @if (themeService.isDarkMode()) {
+                <span class="text-lg">☀️</span>
+              } @else {
+                <span class="text-lg">🌙</span>
+              }
+            </button>
+
+            <app-notification-center></app-notification-center>
+          </div>
+        </header>
 
 
         <!-- 1. OVERVIEW DASHBOARD -->
@@ -189,10 +230,18 @@ import {
         @if (activeTab() === 'assets') {
           <div class="tab-content fade-in">
             <div class="action-header">
-              <h1 class="display-header page-heading">Asset Inventory Manager</h1>
-              <button class="btn btn-primary" (click)="openAddAssetModal()">
-                Add New Asset
-              </button>
+              <h1 class="display-header page-heading">Assets Inventory Directory</h1>
+              <div class="action-buttons-group" style="display: flex; gap: 12px;">
+                <button class="btn btn-secondary" (click)="exportService.exportAssetsToCsv(sortedAssets())">
+                  Export CSV 📥
+                </button>
+                <button class="btn btn-secondary" (click)="showScannerModal.set(true)">
+                  Scan Asset QR 📷
+                </button>
+                <button class="btn btn-primary" (click)="openAddAssetModal()">
+                  Add New Asset
+                </button>
+              </div> 
             </div>
 
             <!-- Filter Bar -->
@@ -273,6 +322,8 @@ import {
                           <span>{{ sortDirection() === 'asc' ? ' ▲' : ' ▼' }}</span>
                         }
                       </th>
+                      <th>Net Book Value</th>
+                      <th>Warranty</th>
                       <th (click)="toggleSort('vendor')" style="cursor: pointer;">
                         Vendor
                         @if (sortColumn() === 'vendor') {
@@ -289,7 +340,7 @@ import {
                     </tr>
                   </thead>
                   <tbody>
-                    @for (asset of sortedAssets(); track asset.id) {
+                    @for (asset of paginatedAssets(); track asset.id) {
                       <tr (click)="openDetailDrawer(asset)" style="cursor: pointer;">
                         <td><code>{{ asset.id }}</code></td>
                         <td>
@@ -308,6 +359,15 @@ import {
                         <td>{{ asset.category }}</td>
                         <td>{{ asset.quantity }}</td>
                         <td>₹{{ asset.totalPrice | number }}</td>
+                        <td>₹{{ depreciationService.calculateDepreciation(asset).currentValue | number }}</td>
+                        <td>
+                          @switch (depreciationService.calculateDepreciation(asset).warrantyStatus) {
+                            @case ('Active') { <span class="badge badge-green">Active</span> }
+                            @case ('Expiring Soon') { <span class="badge badge-orange animate-pulse">Expiring Soon</span> }
+                            @case ('Expired') { <span class="badge badge-red">Expired</span> }
+                            @default { <span class="badge badge-gray">N/A</span> }
+                          }
+                        </td>
                         <td>{{ asset.vendor || '-' }}</td>
                         <td>
                           <span class="badge" 
@@ -329,12 +389,21 @@ import {
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="8" class="text-center">No assets found matching filters.</td>
+                        <td colspan="10" class="text-center">No assets found matching filters.</td>
                       </tr>
                     }
                   </tbody>
                 </table>
               </div>
+
+              <!-- Asset Pagination -->
+              <app-pagination
+                [currentPage]="assetPage()"
+                [pageSize]="assetPageSize()"
+                [totalItems]="sortedAssets().length"
+                (pageChange)="assetPage.set($event)"
+                (pageSizeChange)="assetPageSize.set($event); assetPage.set(1)">
+              </app-pagination>
             </div>
           </div>
         }
@@ -920,17 +989,26 @@ import {
                         </td>
                         <td class="reason-cell"><em>"{{ req.reason }}"</em></td>
                         <td>
-                          <span class="badge badge-orange">{{ req.status }}</span>
+                          <span class="badge"
+                            [class.badge-orange]="req.status === 'Pending' || req.status === 'Pending Department'"
+                            [class.badge-purple]="req.status === 'Pending Super Admin'"
+                            [class.badge-green]="req.status === 'Approved'"
+                            [class.badge-red]="req.status === 'Rejected'"
+                            [class.badge-gray]="req.status === 'Draft'"
+                          >
+                            {{ req.status }}
+                          </span>
                         </td>
                         <td>
-                          @if (req.status === 'Pending') {
-                            <div class="action-buttons">
-                              <button class="btn btn-primary btn-sm" (click)="openReviewModal(req, true)">Approve</button>
+                          <div class="action-buttons" style="display: flex; gap: 8px; align-items: center;">
+                            @if (req.status === 'Pending' || req.status === 'Pending Department' || req.status === 'Pending Super Admin') {
+                              <button class="btn btn-primary btn-sm" (click)="openReviewModal(req, true)">
+                                {{ req.status === 'Pending Department' ? 'Forward' : 'Approve' }}
+                              </button>
                               <button class="btn btn-danger btn-sm" (click)="openReviewModal(req, false)">Reject</button>
-                            </div>
-                          } @else {
-                            <span class="processed-text">{{ req.status }}</span>
-                          }
+                            }
+                            <button class="btn btn-secondary btn-sm" (click)="openHistoryModal(req)">History 📋</button>
+                          </div>
                         </td>
                       </tr>
                     } @empty {
@@ -1305,6 +1383,75 @@ import {
       </div>
     }
 
+    <!-- MODAL: REQUEST HISTORY TIMELINE -->
+    @if (showHistoryModal()) {
+      <div class="modal-backdrop" (click)="closeHistoryModal()">
+        <div class="glass-panel modal-card history-modal" (click)="$event.stopPropagation()">
+          <h2 class="display-header modal-title">Verification Request History</h2>
+          
+          <div class="request-summary-card">
+            <div class="summary-item">
+              <span class="label">Asset:</span>
+              <span class="value"><strong>{{ selectedHistoryRequest()?.assetName }}</strong> (<code>{{ selectedHistoryRequest()?.assetId }}</code>)</span>
+            </div>
+            <div class="summary-item">
+              <span class="label">Action Type:</span>
+              <span class="value">{{ selectedHistoryRequest()?.changeType }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="label">Diff:</span>
+              <span class="value"><code>{{ selectedHistoryRequest()?.previousValue }}</code> ➔ <code>{{ selectedHistoryRequest()?.newValue }}</code></span>
+            </div>
+            @if (selectedHistoryRequest()?.rejectionReason) {
+              <div class="summary-item rejection-alert">
+                <span class="label">Rejection Reason:</span>
+                <span class="value"><strong>{{ selectedHistoryRequest()?.rejectionReason }}</strong></span>
+              </div>
+            }
+          </div>
+
+          <div class="timeline-container">
+            @for (step of parsedHistory(); track $index; let last = $last) {
+              <div class="timeline-step">
+                <div class="timeline-marker">
+                  <div class="timeline-dot" [class.dot-active]="last"></div>
+                  @if (!last) {
+                    <div class="timeline-line"></div>
+                  }
+                </div>
+                <div class="timeline-content glass-panel">
+                  <div class="step-header">
+                    <span class="badge"
+                      [class.badge-orange]="step.status === 'Pending' || step.status === 'Pending Department'"
+                      [class.badge-purple]="step.status === 'Pending Super Admin'"
+                      [class.badge-green]="step.status === 'Approved'"
+                      [class.badge-red]="step.status === 'Rejected'"
+                      [class.badge-gray]="step.status === 'Draft'"
+                    >
+                      {{ step.status }}
+                    </span>
+                    <span class="step-time">{{ step.timestamp }}</span>
+                  </div>
+                  <div class="step-user">
+                    <strong>{{ step.updaterName }}</strong> ({{ step.updatedBy }})
+                  </div>
+                  @if (step.comments) {
+                    <p class="step-comment">Remarks: "{{ step.comments }}"</p>
+                  }
+                </div>
+              </div>
+            } @empty {
+              <div class="text-center p-4">No transition history logged.</div>
+            }
+          </div>
+
+          <div class="modal-buttons">
+            <button class="btn btn-secondary" (click)="closeHistoryModal()">Close</button>
+          </div>
+        </div>
+      </div>
+    }
+
     <!-- Side Details Drawer -->
     @if (selectedDetailAsset(); as asset) {
       <div class="drawer-backdrop" (click)="closeDetailDrawer()"></div>
@@ -1423,15 +1570,8 @@ import {
           </div>
 
           <div class="detail-section">
-            <h3>Transfer History</h3>
-            @for (transfer of assetTransfers(); track transfer.id) {
-              <div class="remarks-text">
-                {{ transfer.transferDate }}: {{ transfer.fromDepartmentName || 'Unassigned' }} to {{ transfer.toDepartmentName }}.
-                Reason: {{ transfer.transferReason }}. Approved by: {{ transfer.approvedBy || '-' }}.
-              </div>
-            } @empty {
-              <p class="remarks-text">No transfers recorded.</p>
-            }
+            <h3>Transfer History & Custody Timeline</h3>
+            <app-movement-timeline [transfers]="assetTransfers()"></app-movement-timeline>
           </div>
 
           <div class="detail-section" *ngIf="asset.remarks">
@@ -1441,6 +1581,12 @@ import {
         </div>
       </aside>
     }
+
+    <app-qr-scanner-sim 
+      [active]="showScannerModal()" 
+      (close)="showScannerModal.set(false)" 
+      (assetUpdated)="loadData()"
+    ></app-qr-scanner-sim>
 
     @if (showTransferModal()) {
       <div class="modal-backdrop">
@@ -2121,13 +2267,173 @@ import {
       to { transform: translateY(0); opacity: 1; }
     }
 
+    /* History Modal & Timeline Styling */
+    .history-modal {
+      max-width: 650px !important;
+      animation: modalSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .request-summary-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+    }
+    .summary-item .label {
+      color: var(--text-secondary);
+    }
+    .summary-item .value {
+      color: var(--text-primary);
+    }
+    .rejection-alert {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px dashed rgba(239, 68, 68, 0.4);
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .rejection-alert .label {
+      color: #f87171;
+    }
+    .timeline-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 350px;
+      overflow-y: auto;
+      padding-right: 8px;
+      margin-bottom: 24px;
+    }
+    .timeline-step {
+      display: flex;
+      gap: 16px;
+    }
+    .timeline-marker {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 16px;
+    }
+    .timeline-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      border: 2px solid var(--bg-primary);
+      z-index: 2;
+    }
+    .timeline-dot.dot-active {
+      background: var(--primary-color, #8b5cf6);
+      box-shadow: 0 0 8px var(--primary-color, #8b5cf6);
+    }
+    .timeline-line {
+      width: 2px;
+      flex-grow: 1;
+      background: var(--glass-border);
+      margin-top: 4px;
+      margin-bottom: -16px;
+    }
+    .timeline-content {
+      flex-grow: 1;
+      padding: 12px 16px !important;
+      border-radius: 8px !important;
+      background: rgba(255, 255, 255, 0.02) !important;
+    }
+    .step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .step-time {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+    .step-user {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .step-comment {
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      margin: 4px 0 0 0;
+      background: rgba(0,0,0,0.2);
+      padding: 6px 10px;
+      border-radius: 4px;
+      border-left: 3px solid var(--primary-color, #8b5cf6);
+    }
+
+    /* Badge Extensions */
+    .badge-purple {
+      background: rgba(139, 92, 246, 0.15) !important;
+      color: #a78bfa !important;
+      border: 1px solid rgba(139, 92, 246, 0.3) !important;
+    }
+    .badge-orange {
+      background: rgba(249, 115, 22, 0.15) !important;
+      color: #fb923c !important;
+      border: 1px solid rgba(249, 115, 22, 0.3) !important;
+    }
+    .badge-green {
+      background: rgba(16, 185, 129, 0.15) !important;
+      color: #34d399 !important;
+      border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    }
+    .badge-red {
+      background: rgba(239, 68, 68, 0.15) !important;
+      color: #f87171 !important;
+      border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    }
+    .badge-gray {
+      background: rgba(156, 163, 175, 0.15) !important;
+      color: #d1d5db !important;
+      border: 1px solid rgba(156, 163, 175, 0.3) !important;
+    }
+    .badge-cyan {
+      background: rgba(6, 182, 212, 0.15) !important;
+      color: #22d3ee !important;
+      border: 1px solid rgba(6, 182, 212, 0.3) !important;
+    }
+    .badge-blue {
+      background: rgba(59, 130, 246, 0.15) !important;
+      color: #60a5fa !important;
+      border: 1px solid rgba(59, 130, 246, 0.3) !important;
+    }
+
   `]
 })
-export class SuperAdminComponent implements OnInit {
+export class SuperAdminComponent implements OnInit, OnDestroy {
+  public themeService = inject(ThemeService);
+  public notificationService = inject(NotificationService);
+  public exportService = inject(ExportService);
+  public depreciationService = inject(DepreciationService);
+
+  // Pagination Signals
+  assetPage = signal<number>(1);
+  assetPageSize = signal<number>(10);
+  paginatedAssets = computed(() => {
+    const page = this.assetPage();
+    const size = this.assetPageSize();
+    return this.sortedAssets().slice((page - 1) * size, page * size);
+  });
+
   // Navigation State
   activeTab = signal<string>('overview');
   userName = signal<string>('Dr. Suresh Kumar');
   userEmail = signal<string>('super@kare.edu');
+  realtimeSubscription: (() => void) | null = null;
   
   // Data Signals
   assets = signal<Asset[]>([]);
@@ -2223,6 +2529,7 @@ export class SuperAdminComponent implements OnInit {
   ])));
 
   // Modals & Temp States
+  showScannerModal = signal<boolean>(false);
   showAssetModal = signal<boolean>(false);
   isEditingAsset = signal<boolean>(false);
   editingAsset!: Asset;
@@ -2235,6 +2542,18 @@ export class SuperAdminComponent implements OnInit {
   selectedRequest = signal<VerificationRequest | null>(null);
   isApproving = signal<boolean>(true);
   reviewComments = '';
+
+  showHistoryModal = signal<boolean>(false);
+  selectedHistoryRequest = signal<VerificationRequest | null>(null);
+  parsedHistory = computed(() => {
+    const r = this.selectedHistoryRequest();
+    if (!r || !r.approverHistory) return [];
+    try {
+      return JSON.parse(r.approverHistory);
+    } catch (e) {
+      return [];
+    }
+  });
 
   // Reporting Filters
   reportType = 'summary';
@@ -2255,7 +2574,7 @@ export class SuperAdminComponent implements OnInit {
   ) {
     // Prevent body scroll when any modal or drawer is open
     effect(() => {
-      const isModalOpen = this.showAssetModal() || this.showQR() || this.showReviewModal() || this.showDetailDrawer() || this.showTransferModal();
+      const isModalOpen = this.showAssetModal() || this.showQR() || this.showReviewModal() || this.showDetailDrawer() || this.showTransferModal() || this.showHistoryModal();
       if (isModalOpen) {
         document.body.classList.add('modal-open');
       } else {
@@ -2273,6 +2592,143 @@ export class SuperAdminComponent implements OnInit {
     }
     
     await this.loadData();
+
+    const channels = this.appwriteService.getRealtimeChannels(user, this.schools());
+    this.realtimeSubscription = this.appwriteService.subscribeToRealtime(channels, (event) => {
+      this.handleRealtimeEvent(event);
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.realtimeSubscription) {
+      this.realtimeSubscription();
+      this.realtimeSubscription = null;
+    }
+  }
+
+  private handleRealtimeEvent(event: any) {
+    if (!event || !event.events || event.events.length === 0) return;
+    
+    const eventStr = event.events[0];
+    const parts = eventStr.split('.');
+    if (parts.length < 7) return;
+    const collectionId = parts[3];
+    const eventType = parts[6];
+    const docPayload = event.payload;
+
+    const baseColls = ['assets', 'consumables', 'furniture', 'requests', 'audit_logs', 'locations', 'bills', 'bill_items', 'asset_transfers', 'products'];
+    let collectionBaseName = '';
+    for (const base of baseColls) {
+      if (collectionId.endsWith(`_${base}`)) {
+        collectionBaseName = base;
+        break;
+      }
+    }
+    
+    if (!collectionBaseName) return;
+    
+    switch (collectionBaseName) {
+      case 'assets':
+      case 'furniture':
+      case 'consumables': {
+        const mapped = this.appwriteService.mapAssetDocument(docPayload, this.locations());
+        this.updateLocalList(this.assets, mapped, eventType);
+        break;
+      }
+      case 'requests': {
+        const mapped = this.appwriteService.mapRequestDocument(docPayload);
+        this.updateLocalList(this.requests, mapped, eventType);
+        break;
+      }
+      case 'audit_logs': {
+        const mapped = this.appwriteService.mapAuditLogDocument(docPayload);
+        this.updateLocalList(this.auditLogs, mapped, eventType);
+        break;
+      }
+      case 'locations': {
+        const mapped: Location = {
+          id: docPayload.id || docPayload.$id,
+          institution: docPayload.institution,
+          department: docPayload.department,
+          building: docPayload.building,
+          room: docPayload.room,
+          floor: docPayload.floor || ''
+        };
+        this.updateLocalList(this.locations, mapped, eventType);
+        break;
+      }
+      case 'bills': {
+        const mapped: ProcurementBill = {
+          id: docPayload.id || docPayload.$id,
+          billNumber: docPayload.billNumber || '',
+          schoolId: docPayload.schoolId || '',
+          schoolName: docPayload.schoolName || '',
+          vendorId: docPayload.vendorId || '',
+          vendorName: docPayload.vendorName || '',
+          purchaseOrderNumber: docPayload.purchaseOrderNumber || '',
+          invoiceNumber: docPayload.invoiceNumber || '',
+          purchaseDate: docPayload.purchaseDate || '',
+          billingDate: docPayload.billingDate || '',
+          departmentId: docPayload.departmentId || '',
+          departmentName: docPayload.departmentName || '',
+          gstPercent: docPayload.gstPercent || 0,
+          subtotal: docPayload.subtotal || 0,
+          gstAmount: docPayload.gstAmount || 0,
+          transportCharges: docPayload.transportCharges || 0,
+          packingCharges: docPayload.packingCharges || 0,
+          insuranceCharges: docPayload.insuranceCharges || 0,
+          otherCharges: docPayload.otherCharges || 0,
+          discount: docPayload.discount || 0,
+          grandTotal: docPayload.grandTotal || 0,
+          paymentStatus: docPayload.paymentStatus || 'Pending',
+          paymentMethod: docPayload.paymentMethod || '',
+          invoiceAttachmentIds: docPayload.invoiceAttachmentIds || [],
+          remarks: docPayload.remarks || '',
+          createdBy: docPayload.createdBy || '',
+          approvedBy: docPayload.approvedBy || '',
+          approvalDate: docPayload.approvalDate || '',
+          associatedAssetIds: docPayload.associatedAssetIds || [],
+          createdAt: docPayload.createdAt || ''
+        };
+        this.updateLocalList(this.bills, mapped, eventType);
+        break;
+      }
+      case 'products': {
+        const mapped: ProductMaster = {
+          id: docPayload.id || docPayload.$id,
+          name: docPayload.name || '',
+          category: docPayload.category || '',
+          brand: docPayload.brand || '',
+          model: docPayload.model || '',
+          manufacturer: docPayload.manufacturer || '',
+          specifications: docPayload.specifications || '',
+          suggestedWarranty: docPayload.suggestedWarranty || '',
+          barcode: docPayload.barcode || '',
+          active: docPayload.active !== false
+        };
+        this.updateLocalList(this.products, mapped, eventType);
+        break;
+      }
+    }
+  }
+
+  private updateLocalList<T extends { id: string }>(signalRef: any, item: T, eventType: string) {
+    const list = [...signalRef()];
+    if (eventType === 'create') {
+      if (!list.some(x => x.id === item.id)) {
+        signalRef.set([item, ...list]);
+      }
+    } else if (eventType === 'update') {
+      const idx = list.findIndex(x => x.id === item.id);
+      if (idx !== -1) {
+        list[idx] = item;
+        signalRef.set(list);
+      } else {
+        signalRef.set([item, ...list]);
+      }
+    } else if (eventType === 'delete') {
+      signalRef.set(list.filter(x => x.id !== item.id));
+    }
   }
 
   async loadData() {
@@ -3059,6 +3515,16 @@ export class SuperAdminComponent implements OnInit {
     await this.appwriteService.processRequest(req.id, this.isApproving(), this.reviewComments);
     this.showReviewModal.set(false);
     await this.loadData();
+  }
+
+  openHistoryModal(req: VerificationRequest) {
+    this.selectedHistoryRequest.set(req);
+    this.showHistoryModal.set(true);
+  }
+
+  closeHistoryModal() {
+    this.showHistoryModal.set(false);
+    this.selectedHistoryRequest.set(null);
   }
 
   viewContainer(containerId: string) {

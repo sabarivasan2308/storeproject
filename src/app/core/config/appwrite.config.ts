@@ -15,7 +15,9 @@ export const APPWRITE_CONFIG = {
     PRODUCTS: 'products',
     DEPARTMENTS: 'departments',
     ASSET_TRANSFERS: 'asset_transfers',
-    PROCUREMENT_AUDIT_LOGS: 'procurement_audit_logs'
+    PROCUREMENT_AUDIT_LOGS: 'procurement_audit_logs',
+    MAINTENANCE: 'maintenance',
+    WARRANTY: 'warranty'
   },
   
   BUCKETS: {
