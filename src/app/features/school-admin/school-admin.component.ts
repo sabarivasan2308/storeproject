@@ -8,11 +8,12 @@ import { DepreciationService } from '../../core/services/depreciation.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { Asset, Location, VerificationRequest, MasterOption, Vendor, AssetTransfer } from '../../core/models/types';
-import { MovementTimelineComponent } from '../shared/components/movement-timeline.component';
 import { QRScannerSimComponent } from '../shared/components/qr-scanner-sim.component';
 import { NotificationCenterComponent } from '../shared/components/notification-center.component';
 import { PaginationComponent } from '../shared/components/pagination.component';
 import { StatCardComponent } from '../shared/components/stat-card.component';
+import { AssetDrawerComponent } from '../shared/components/asset-drawer.component';
+import { AssetFormComponent } from '../shared/components/asset-form.component';
 
 @Component({
   selector: 'app-school-admin',
@@ -20,10 +21,11 @@ import { StatCardComponent } from '../shared/components/stat-card.component';
   imports: [
     CommonModule, 
     FormsModule, 
-    MovementTimelineComponent, 
     QRScannerSimComponent,
     NotificationCenterComponent,
-    PaginationComponent
+    PaginationComponent,
+    AssetDrawerComponent,
+    AssetFormComponent
   ],
   template: `
     <div class="dashboard-container">
@@ -558,155 +560,22 @@ import { StatCardComponent } from '../shared/components/stat-card.component';
     </div>
 
     <!-- MODAL: ADD ASSET REQUEST -->
-    @if (showAddAssetModal()) {
-      <div class="modal-backdrop">
-        <div class="glass-panel modal-card">
-          <h2 class="display-header modal-title">Propose Add Asset</h2>
-          
-          <form (ngSubmit)="submitAddAssetPropose()">
-            <div class="modal-body">
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Asset ID (e.g. FR-AKCP-BT-F1-001)</label>
-                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.id" name="id" required />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Asset Name</label>
-                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.name" name="name" required />
-                </div>
-              </div>
+    <app-asset-form
+      [active]="showAddAssetModal()"
+      [title]="'Propose Add Asset'"
+      [submitButtonText]="'Propose Asset addition'"
+      [isEditMode]="false"
+      [asset]="proposeAsset"
+      [categoryList]="categoryList()"
+      [statusList]="statusList()"
+      [locations]="locations()"
+      [containerAssets]="containerAssets()"
+      [vendorList]="vendorList()"
+      [showProposeReasonField]="true"
+      (save)="onProposeAsset($event)"
+      (cancel)="closeAddAssetModal()"
+    ></app-asset-form>
 
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Category</label>
-                  <select class="form-input" [(ngModel)]="proposeAsset.category" name="category" required>
-                    @for (cat of categoryList(); track cat) {
-                      <option [value]="cat">{{ cat }}</option>
-                    }
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Initial Status</label>
-                  <select class="form-input" [(ngModel)]="proposeAsset.status" name="status" required>
-                    @for (status of statusList(); track status) {
-                      <option [value]="status">{{ status }}</option>
-                    }
-                  </select>
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Purchase Date</label>
-                  <input type="date" class="form-input" [(ngModel)]="proposeAsset.purchaseDate" name="purchaseDate" required />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Purchase Order (Alphanumeric)</label>
-                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.purchaseOrder" name="purchaseOrder" placeholder="PO-12345" />
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Bill Number (Alphanumeric)</label>
-                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.billNumber" name="billNumber" placeholder="BILL-9876" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Bill Date</label>
-                  <input type="date" class="form-input" [(ngModel)]="proposeAsset.billDate" name="billDate" />
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Brand</label>
-                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.brand" name="brand" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Model</label>
-                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.model" name="model" />
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Quantity</label>
-                  <input type="number" class="form-input" [(ngModel)]="proposeAsset.quantity" name="quantity" required />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Unit Price (₹)</label>
-                  <input type="number" class="form-input" [(ngModel)]="proposeAsset.unitPrice" name="unitPrice" required />
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Location Mapping</label>
-                  <select class="form-input" [(ngModel)]="proposeAsset.locationId" name="locationId" required>
-                    @for (loc of institutionLocations(); track loc.id) {
-                      <option [value]="loc.id">
-                        {{ loc.building }} ({{ loc.room }})
-                      </option>
-                    }
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Stored inside Container (Optional)</label>
-                  <select class="form-input" [(ngModel)]="proposeAsset.containerId" name="containerId">
-                    <option [value]="undefined">None (Root Asset)</option>
-                    @for (c of containerAssets(); track c.id) {
-                      <option [value]="c.id">{{ c.name }} ({{ c.id }})</option>
-                    }
-                  </select>
-                </div>
-              </div>
-
-              <div class="form-group flex-row">
-                <input type="checkbox" id="isContainer" [(ngModel)]="proposeAsset.isContainer" name="isContainer" />
-                <label for="isContainer" class="form-label pointer-label">Acts as a Container (Can hold other assets)</label>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Vendor</label>
-                  <select class="form-input" [(ngModel)]="proposeAsset.vendor" name="vendor">
-                    <option value="">Select Vendor</option>
-                    @for (vendor of vendorList(); track vendor) {
-                      <option [value]="vendor">{{ vendor }}</option>
-                    }
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Warranty Details</label>
-                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.warrantyDetails" name="warrantyDetails" placeholder="e.g. 3 Years Onsite" />
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Serial Number</label>
-                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.serialNumber" name="serialNumber" placeholder="e.g. SN123456789" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Remarks</label>
-                  <input type="text" class="form-input" [(ngModel)]="proposeAsset.remarks" name="remarks" placeholder="Any additional notes..." />
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Reason for Adding Asset</label>
-                <input type="text" class="form-input" [(ngModel)]="proposeReason" name="proposeReason" required placeholder="Provide justification for Super Admin review" />
-              </div>
-            </div>
-
-            <div class="modal-buttons">
-              <button type="button" class="btn btn-secondary" (click)="closeAddAssetModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary">Propose Asset addition</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    }
 
     <!-- MODAL: SUBMIT CHANGE REQUEST -->
     @if (showRequestModal()) {
@@ -769,119 +638,14 @@ import { StatCardComponent } from '../shared/components/stat-card.component';
     }
 
     <!-- Side Details Drawer -->
-    @if (selectedDrawerAsset(); as asset) {
-      <div class="drawer-backdrop" (click)="selectedDrawerAsset.set(null)"></div>
-      <aside class="side-drawer glass-panel" [class.open]="selectedDrawerAsset() !== null">
-        <div class="drawer-header">
-          <h2 class="drawer-title">Asset Details</h2>
-          <button class="btn-close" (click)="selectedDrawerAsset.set(null)">✕</button>
-        </div>
-        
-        <div class="drawer-body">
-          <div class="qr-print-section">
-            <img 
-              [src]="'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + asset.id" 
-              alt="QR Code" 
-              class="drawer-qr"
-            />
-            <button class="btn btn-secondary btn-sm" (click)="printAssetQR(asset)">
-              🖨️ Print QR Code
-            </button>
-          </div>
-
-          <div class="detail-section">
-            <h3>General Info</h3>
-            <div class="detail-grid">
-              <div class="detail-label">Asset ID</div>
-              <div class="detail-value"><code>{{ asset.id }}</code></div>
-              
-              <div class="detail-label">Name</div>
-              <div class="detail-value"><strong>{{ asset.name }}</strong></div>
-              
-              <div class="detail-label">Category</div>
-              <div class="detail-value">{{ asset.category }}</div>
-              
-              <div class="detail-label">Status</div>
-              <div class="detail-value">
-                <span class="badge" 
-                  [class.badge-green]="asset.status === 'Active'" 
-                  [class.badge-red]="asset.status === 'Condemned'"
-                  [class.badge-orange]="asset.status === 'Missing' || asset.status === 'Damaged'"
-                  [class.badge-blue]="asset.status === 'Under Service' || asset.status === 'Transferred'"
-                  [class.badge-gray]="asset.status === 'Idle'"
-                >
-                  {{ asset.status }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div class="detail-section">
-            <h3>Specification</h3>
-            <div class="detail-grid">
-              <div class="detail-label">Brand</div>
-              <div class="detail-value">{{ asset.brand || '-' }}</div>
-              
-              <div class="detail-label">Model</div>
-              <div class="detail-value">{{ asset.model || '-' }}</div>
-              
-              <div class="detail-label">Serial Number</div>
-              <div class="detail-value"><code>{{ asset.serialNumber || '-' }}</code></div>
-            </div>
-          </div>
-
-          <div class="detail-section">
-            <h3>Procurement & Billing</h3>
-            <div class="detail-grid">
-              <div class="detail-label">Quantity</div>
-              <div class="detail-value">{{ asset.quantity }}</div>
-
-              <div class="detail-label">Unit Price</div>
-              <div class="detail-value">₹{{ asset.unitPrice | number }}</div>
-
-              <div class="detail-label">Total Value</div>
-              <div class="detail-value">₹{{ asset.totalPrice | number }}</div>
-
-              <div class="detail-label">Purchase Date</div>
-              <div class="detail-value">{{ asset.purchaseDate || '-' }}</div>
-
-              <div class="detail-label">Purchase Order</div>
-              <div class="detail-value"><code>{{ asset.purchaseOrder || '-' }}</code></div>
-
-              <div class="detail-label">Bill Number</div>
-              <div class="detail-value"><code>{{ asset.billNumber || '-' }}</code></div>
-
-              <div class="detail-label">Bill Date</div>
-              <div class="detail-value">{{ asset.billDate || '-' }}</div>
-              
-              <div class="detail-label">Vendor</div>
-              <div class="detail-value">{{ asset.vendor || '-' }}</div>
-            </div>
-          </div>
-
-          <div class="detail-section">
-            <h3>Location & Support</h3>
-            <div class="detail-grid">
-              <div class="detail-label">Location</div>
-              <div class="detail-value">{{ asset.locationText || '-' }}</div>
-
-              <div class="detail-label">Warranty</div>
-              <div class="detail-value">{{ asset.warrantyDetails || '-' }}</div>
-            </div>
-          </div>
-
-          <div class="detail-section">
-            <h3>Transfer History & Custody Timeline</h3>
-            <app-movement-timeline [transfers]="assetTransfers()"></app-movement-timeline>
-          </div>
-
-          <div class="detail-section" *ngIf="asset.remarks">
-            <h3>Remarks</h3>
-            <p class="remarks-text">{{ asset.remarks }}</p>
-          </div>
-        </div>
-      </aside>
-    }
+    <app-asset-drawer
+      [asset]="selectedDrawerAsset()"
+      [isOpen]="selectedDrawerAsset() !== null"
+      [transfers]="assetTransfers()"
+      [showAdminActions]="false"
+      (close)="selectedDrawerAsset.set(null)"
+      (printQR)="printAssetQR($event)"
+    ></app-asset-drawer>
 
     <app-qr-scanner-sim 
       [active]="showScannerModal()" 
@@ -1256,123 +1020,6 @@ import { StatCardComponent } from '../shared/components/stat-card.component';
       to { transform: translateY(0); opacity: 1; }
     }
 
-    /* Side Drawer Styles */
-    .drawer-backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(4px);
-      z-index: 999;
-    }
-    .side-drawer {
-      position: fixed;
-      top: 0;
-      right: -450px;
-      width: 420px;
-      height: 100vh;
-      background: rgba(15, 23, 42, 0.95);
-      backdrop-filter: blur(20px);
-      border-left: 1px solid var(--glass-border);
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
-      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .side-drawer.open {
-      right: 0;
-    }
-    .drawer-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--glass-border);
-    }
-    .drawer-title {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: #fff;
-      background: linear-gradient(135deg, #fff 0%, #22d3ee 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .btn-close {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.2rem;
-      cursor: pointer;
-      padding: 4px;
-      transition: color 0.2s;
-    }
-    .btn-close:hover {
-      color: #fff;
-    }
-    .drawer-body {
-      flex-grow: 1;
-      overflow-y: auto;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-    .qr-print-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      padding: 16px;
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: 12px;
-      border: 1px solid var(--glass-border);
-    }
-    .drawer-qr {
-      width: 150px;
-      height: 150px;
-      background: #fff;
-      padding: 8px;
-      border-radius: 8px;
-    }
-    .detail-section {
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      padding-bottom: 16px;
-    }
-    .detail-section:last-child {
-      border-bottom: none;
-    }
-    .detail-section h3 {
-      font-size: 0.95rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--accent-cyan);
-      margin-bottom: 12px;
-    }
-    .detail-grid {
-      display: grid;
-      grid-template-columns: 120px 1fr;
-      gap: 8px 16px;
-      font-size: 0.9rem;
-    }
-    .detail-label {
-      color: var(--text-secondary);
-    }
-    .detail-value {
-      color: var(--text-primary);
-      word-break: break-all;
-    }
-    .remarks-text {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      line-height: 1.5;
-      background: rgba(255, 255, 255, 0.02);
-      padding: 10px;
-      border-radius: 6px;
-      border: 1px solid var(--glass-border);
-    }
     th.sortable-header {
       cursor: pointer;
       user-select: none;
@@ -1799,34 +1446,9 @@ export class SchoolAdminComponent implements OnInit, OnDestroy {
     this.showAddAssetModal.set(false);
   }
 
-  async submitAddAssetPropose() {
-    // Alphanumeric validation
-    const alphaNumRegex = /^[a-zA-Z0-9]*$/;
-    if (this.proposeAsset.purchaseOrder && !alphaNumRegex.test(this.proposeAsset.purchaseOrder)) {
-      alert('Purchase Order must be alphanumeric (only letters and numbers allowed).');
-      return;
-    }
-    if (this.proposeAsset.billNumber && !alphaNumRegex.test(this.proposeAsset.billNumber)) {
-      alert('Bill Number must be alphanumeric (only letters and numbers allowed).');
-      return;
-    }
-
-    // Date validations
-    const today = new Date().toISOString().substring(0, 10);
-    if (this.proposeAsset.purchaseDate && this.proposeAsset.purchaseDate > today) {
-      alert('Purchase Date cannot be in the future.');
-      return;
-    }
-    if (this.proposeAsset.billDate) {
-      if (this.proposeAsset.billDate > today) {
-        alert('Bill Date cannot be in the future.');
-        return;
-      }
-      if (this.proposeAsset.purchaseDate && this.proposeAsset.billDate < this.proposeAsset.purchaseDate) {
-        alert('Bill Date cannot be earlier than Purchase Date.');
-        return;
-      }
-    }
+  async onProposeAsset(event: { asset: Partial<Asset>; proposeReason?: string }) {
+    this.proposeAsset = event.asset as Asset;
+    this.proposeReason = event.proposeReason || '';
 
     this.proposeAsset.totalPrice = this.proposeAsset.quantity * this.proposeAsset.unitPrice;
     this.proposeAsset.qrCode = this.proposeAsset.id;

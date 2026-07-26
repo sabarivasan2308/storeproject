@@ -7,11 +7,12 @@ import { ExportService } from '../../core/services/export.service';
 import { DepreciationService } from '../../core/services/depreciation.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ThemeService } from '../../core/services/theme.service';
-import { MovementTimelineComponent } from '../shared/components/movement-timeline.component';
 import { QRScannerSimComponent } from '../shared/components/qr-scanner-sim.component';
 import { NotificationCenterComponent } from '../shared/components/notification-center.component';
 import { PaginationComponent } from '../shared/components/pagination.component';
 import { StatCardComponent } from '../shared/components/stat-card.component';
+import { AssetDrawerComponent } from '../shared/components/asset-drawer.component';
+import { AssetFormComponent } from '../shared/components/asset-form.component';
 import {
   Asset,
   Location,
@@ -33,10 +34,11 @@ import {
   imports: [
     CommonModule, 
     FormsModule, 
-    MovementTimelineComponent, 
     QRScannerSimComponent,
     NotificationCenterComponent,
-    PaginationComponent
+    PaginationComponent,
+    AssetDrawerComponent,
+    AssetFormComponent
   ],
   template: `
     <div class="dashboard-container">
@@ -1200,152 +1202,19 @@ import {
     </div>
 
     <!-- MODAL: ADD / EDIT ASSET -->
-    @if (showAssetModal()) {
-      <div class="modal-backdrop">
-        <div class="glass-panel modal-card">
-          <h2 class="display-header modal-title">{{ isEditingAsset() ? 'Edit Asset' : 'Add New Asset' }}</h2>
-          
-          <form (ngSubmit)="saveAsset()">
-            <div class="modal-body">
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Asset ID (e.g. FR-AKCP-BT-F1-001)</label>
-                  <input type="text" class="form-input" [(ngModel)]="editingAsset.id" name="id" required [disabled]="isEditingAsset()" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Asset Name</label>
-                  <input type="text" class="form-input" [(ngModel)]="editingAsset.name" name="name" required />
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Category</label>
-                  <select class="form-input" [(ngModel)]="editingAsset.category" name="category" required>
-                    @for (cat of categoryList(); track cat) {
-                      <option [value]="cat">{{ cat }}</option>
-                    }
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Status</label>
-                  <select class="form-input" [(ngModel)]="editingAsset.status" name="status" required>
-                    @for (status of statusList(); track status) {
-                      <option [value]="status">{{ status }}</option>
-                    }
-                  </select>
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Brand</label>
-                  <input type="text" class="form-input" [(ngModel)]="editingAsset.brand" name="brand" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Model</label>
-                  <input type="text" class="form-input" [(ngModel)]="editingAsset.model" name="model" />
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Quantity</label>
-                  <input type="number" class="form-input" [(ngModel)]="editingAsset.quantity" name="quantity" required />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Unit Price (₹)</label>
-                  <input type="number" class="form-input" [(ngModel)]="editingAsset.unitPrice" name="unitPrice" required />
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Location Mapping</label>
-                  <select class="form-input" [(ngModel)]="editingAsset.locationId" name="locationId" required>
-                    @for (loc of locations(); track loc.id) {
-                      <option [value]="loc.id">
-                        {{ loc.institution }} - {{ loc.building }} ({{ loc.room }})
-                      </option>
-                    }
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Stored inside Container ID (Optional)</label>
-                  <select class="form-input" [(ngModel)]="editingAsset.containerId" name="containerId">
-                    <option [value]="undefined">None (Root Asset)</option>
-                    @for (c of containerAssets(); track c.id) {
-                      @if (c.id !== editingAsset.id) {
-                        <option [value]="c.id">{{ c.name }} ({{ c.id }})</option>
-                      }
-                    }
-                  </select>
-                </div>
-              </div>
-
-              <div class="form-group flex-row">
-                <input type="checkbox" id="isContainer" [(ngModel)]="editingAsset.isContainer" name="isContainer" />
-                <label for="isContainer" class="form-label pointer-label">Acts as a Container (Can hold other assets)</label>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Purchase Date</label>
-                  <input type="date" class="form-input" [(ngModel)]="editingAsset.purchaseDate" name="purchaseDate" required />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Purchase Order (Alphanumeric)</label>
-                  <input type="text" class="form-input" [(ngModel)]="editingAsset.purchaseOrder" name="purchaseOrder" placeholder="PO-12345" />
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Bill Number (Alphanumeric)</label>
-                  <input type="text" class="form-input" [(ngModel)]="editingAsset.billNumber" name="billNumber" placeholder="BILL-9876" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Bill Date</label>
-                  <input type="date" class="form-input" [(ngModel)]="editingAsset.billDate" name="billDate" />
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Vendor</label>
-                  <select class="form-input" [(ngModel)]="editingAsset.vendor" name="vendor">
-                    <option value="">Select Vendor</option>
-                    @for (vendor of vendorList(); track vendor) {
-                      <option [value]="vendor">{{ vendor }}</option>
-                    }
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Warranty Details</label>
-                  <input type="text" class="form-input" [(ngModel)]="editingAsset.warrantyDetails" name="warrantyDetails" placeholder="e.g. 3 Years Onsite" />
-                </div>
-              </div>
-
-              <div class="form-row-grid">
-                <div class="form-group">
-                  <label class="form-label">Serial Number</label>
-                  <input type="text" class="form-input" [(ngModel)]="editingAsset.serialNumber" name="serialNumber" placeholder="e.g. SN123456789" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Remarks</label>
-                  <input type="text" class="form-input" [(ngModel)]="editingAsset.remarks" name="remarks" placeholder="Any additional notes..." />
-                </div>
-              </div>
-            </div>
-
-            <div class="modal-buttons">
-              <button type="button" class="btn btn-secondary" (click)="closeAssetModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary">Save Asset</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    }
+    <app-asset-form
+      [active]="showAssetModal()"
+      [title]="isEditingAsset() ? 'Edit Asset' : 'Add New Asset'"
+      [isEditMode]="isEditingAsset()"
+      [asset]="editingAsset"
+      [categoryList]="categoryList()"
+      [statusList]="statusList()"
+      [locations]="locations()"
+      [containerAssets]="containerAssets()"
+      [vendorList]="vendorList()"
+      (save)="onSaveAsset($event)"
+      (cancel)="closeAssetModal()"
+    ></app-asset-form>
 
     <!-- MODAL: QR CODE PREVIEW -->
     @if (showQR()) {
@@ -1453,134 +1322,20 @@ import {
     }
 
     <!-- Side Details Drawer -->
-    @if (selectedDetailAsset(); as asset) {
-      <div class="drawer-backdrop" (click)="closeDetailDrawer()"></div>
-      <aside class="side-drawer glass-panel" [class.open]="showDetailDrawer()">
-        <div class="drawer-header">
-          <h2 class="drawer-title">Asset Details</h2>
-          <button class="btn-close" (click)="closeDetailDrawer()">✕</button>
-        </div>
-        
-        <div class="drawer-body">
-          <div class="qr-print-section">
-            <img 
-              [src]="'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + asset.id" 
-              alt="QR Code" 
-              class="drawer-qr"
-            />
-            <button class="btn btn-secondary btn-sm" (click)="printAssetQR(asset)">
-              🖨️ Print QR Code
-            </button>
-          </div>
-
-          <div class="asset-export-actions">
-            <button class="btn btn-secondary btn-sm" (click)="downloadAssetJson(asset)">JSON</button>
-            <button class="btn btn-secondary btn-sm" (click)="downloadAssetExcel(asset)">Excel</button>
-            <button class="btn btn-secondary btn-sm" (click)="downloadAssetPdf(asset)">PDF</button>
-            <button class="btn btn-secondary btn-sm" (click)="printAssetLabel(asset)">Asset Label</button>
-            <button class="btn btn-secondary btn-sm" (click)="printProfessionalAssetSheet(asset)">Asset Sheet</button>
-            <button class="btn btn-primary btn-sm" (click)="openTransferModal(asset)">Transfer</button>
-          </div>
-
-          <div class="detail-section">
-            <h3>General Info</h3>
-            <div class="detail-grid">
-              <div class="detail-label">Asset ID</div>
-              <div class="detail-value"><code>{{ asset.id }}</code></div>
-              
-              <div class="detail-label">Name</div>
-              <div class="detail-value"><strong>{{ asset.name }}</strong></div>
-              
-              <div class="detail-label">Category</div>
-              <div class="detail-value">{{ asset.category }}</div>
-              
-              <div class="detail-label">Status</div>
-              <div class="detail-value">
-                <span class="badge" 
-                  [class.badge-green]="asset.status === 'Active'" 
-                  [class.badge-red]="asset.status === 'Condemned'"
-                  [class.badge-orange]="asset.status === 'Missing' || asset.status === 'Damaged'"
-                  [class.badge-blue]="asset.status === 'Under Service' || asset.status === 'Transferred'"
-                  [class.badge-gray]="asset.status === 'Idle'"
-                >
-                  {{ asset.status }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div class="detail-section">
-            <h3>Specification</h3>
-            <div class="detail-grid">
-              <div class="detail-label">Brand</div>
-              <div class="detail-value">{{ asset.brand || '-' }}</div>
-              
-              <div class="detail-label">Model</div>
-              <div class="detail-value">{{ asset.model || '-' }}</div>
-              
-              <div class="detail-label">Serial Number</div>
-              <div class="detail-value"><code>{{ asset.serialNumber || '-' }}</code></div>
-            </div>
-          </div>
-
-          <div class="detail-section">
-            <h3>Procurement & Billing</h3>
-            <div class="detail-grid">
-              <div class="detail-label">Quantity</div>
-              <div class="detail-value">{{ asset.quantity }}</div>
-
-              <div class="detail-label">Unit Price</div>
-              <div class="detail-value">₹{{ asset.unitPrice | number }}</div>
-
-              <div class="detail-label">Total Value</div>
-              <div class="detail-value">₹{{ asset.totalPrice | number }}</div>
-
-              <div class="detail-label">Purchase Date</div>
-              <div class="detail-value">{{ asset.purchaseDate || '-' }}</div>
-
-              <div class="detail-label">Purchase Order</div>
-              <div class="detail-value"><code>{{ asset.purchaseOrder || '-' }}</code></div>
-
-              <div class="detail-label">Bill Number</div>
-              <div class="detail-value"><code>{{ asset.billNumber || '-' }}</code></div>
-
-              <div class="detail-label">Bill Date</div>
-              <div class="detail-value">{{ asset.billDate || '-' }}</div>
-
-              <div class="detail-label">Bill Reference</div>
-              <div class="detail-value"><code>{{ asset.billId || '-' }}</code></div>
-
-              <div class="detail-label">Department</div>
-              <div class="detail-value">{{ asset.department || '-' }}</div>
-              
-              <div class="detail-label">Vendor</div>
-              <div class="detail-value">{{ asset.vendor || '-' }}</div>
-            </div>
-          </div>
-
-          <div class="detail-section">
-            <h3>Location & Support</h3>
-            <div class="detail-grid">
-              <div class="detail-label">Location</div>
-              <div class="detail-value">{{ asset.locationText || '-' }}</div>
-
-              <div class="detail-label">Warranty</div>
-              <div class="detail-value">{{ asset.warrantyDetails || '-' }}</div>
-            </div>
-          </div>
-
-          <div class="detail-section">
-            <h3>Transfer History & Custody Timeline</h3>
-            <app-movement-timeline [transfers]="assetTransfers()"></app-movement-timeline>
-          </div>
-
-          <div class="detail-section" *ngIf="asset.remarks">
-            <h3>Remarks</h3>
-            <p class="remarks-text">{{ asset.remarks }}</p>
-          </div>
-        </div>
-      </aside>
-    }
+    <app-asset-drawer
+      [asset]="selectedDetailAsset()"
+      [isOpen]="showDetailDrawer()"
+      [transfers]="assetTransfers()"
+      [showAdminActions]="true"
+      (close)="closeDetailDrawer()"
+      (printQR)="printAssetQR($event)"
+      (downloadJson)="downloadAssetJson($event)"
+      (downloadExcel)="downloadAssetExcel($event)"
+      (downloadPdf)="downloadAssetPdf($event)"
+      (printLabel)="printAssetLabel($event)"
+      (printSheet)="printProfessionalAssetSheet($event)"
+      (transfer)="openTransferModal($event)"
+    ></app-asset-drawer>
 
     <app-qr-scanner-sim 
       [active]="showScannerModal()" 
@@ -3439,47 +3194,13 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
     }, 300);
   }
 
-  async saveAsset() {
-    // Alphanumeric validation
-    const alphaNumRegex = /^[a-zA-Z0-9]*$/;
-    if (this.editingAsset.purchaseOrder && !alphaNumRegex.test(this.editingAsset.purchaseOrder)) {
-      alert('Purchase Order must be alphanumeric (only letters and numbers allowed).');
-      return;
-    }
-    if (this.editingAsset.billNumber && !alphaNumRegex.test(this.editingAsset.billNumber)) {
-      alert('Bill Number must be alphanumeric (only letters and numbers allowed).');
-      return;
-    }
-
-    // Date validations
-    const today = new Date().toISOString().substring(0, 10);
-    if (this.editingAsset.purchaseDate && this.editingAsset.purchaseDate > today) {
-      alert('Purchase Date cannot be in the future.');
-      return;
-    }
-    if (this.editingAsset.billDate) {
-      if (this.editingAsset.billDate > today) {
-        alert('Bill Date cannot be in the future.');
-        return;
-      }
-      if (this.editingAsset.purchaseDate && this.editingAsset.billDate < this.editingAsset.purchaseDate) {
-        alert('Bill Date cannot be earlier than Purchase Date.');
-        return;
-      }
-    }
-
-    this.editingAsset.totalPrice = this.editingAsset.quantity * this.editingAsset.unitPrice;
-    this.editingAsset.qrCode = this.editingAsset.id;
-    if (!this.editingAsset.barcode) {
-      this.editingAsset.barcode = 'BAR-' + this.editingAsset.id;
-    }
-
+  async onSaveAsset(event: { asset: Partial<Asset> }) {
+    this.editingAsset = event.asset as Asset;
     if (this.isEditingAsset()) {
       await this.appwriteService.updateAsset(this.editingAsset);
     } else {
       await this.appwriteService.addAsset(this.editingAsset);
     }
-
     this.showAssetModal.set(false);
     await this.loadData();
   }
