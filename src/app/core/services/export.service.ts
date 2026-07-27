@@ -51,6 +51,10 @@ export class ExportService {
     this.exportToCsv(filename, headers, rows);
   }
 
+  exportAssetsCSV(assets: Asset[], filename = 'Assets_Export'): void {
+    this.exportAssetsToCsv(assets, filename);
+  }
+
   exportBillsToCsv(bills: ProcurementBill[], filename = 'Bills_Export'): void {
     const headers = [
       'Bill Number', 'PO Number', 'Invoice Number', 'School', 'Vendor',
@@ -99,6 +103,17 @@ export class ExportService {
       l.details,
       l.reason || ''
     ]);
+    this.exportToCsv(filename, headers, rows);
+  }
+
+  exportAuditLogsCSV(logs: AuditLog[], filename = 'Audit_Logs_Export'): void {
+    this.exportAuditLogsToCsv(logs, filename);
+  }
+
+  exportGenericCSV(items: any[], filename = 'Report_Export'): void {
+    if (!items || items.length === 0) return;
+    const headers = Object.keys(items[0]);
+    const rows = items.map(item => headers.map(h => item[h]));
     this.exportToCsv(filename, headers, rows);
   }
 

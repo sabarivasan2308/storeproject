@@ -8,6 +8,7 @@ export interface AssetDepreciationInfo {
   totalDepreciation: number;
   depreciationPercentage: number;
   usefulLifeYears: number;
+  method: 'Straight-Line' | 'Declining-Balance';
   warrantyStatus: 'Active' | 'Expiring Soon' | 'Expired' | 'No Warranty';
   daysToWarrantyExpiry: number | null;
 }
@@ -31,7 +32,7 @@ export class DepreciationService {
     return this.categoryUsefulLifeMap[category] || 5;
   }
 
-  calculateDepreciation(asset: Asset): AssetDepreciationInfo {
+  calculateDepreciation(asset: Asset, method: 'Straight-Line' | 'Declining-Balance' = 'Straight-Line', customRate?: number): AssetDepreciationInfo {
     const unitPrice = asset.unitPrice || 0;
     const totalPrice = asset.totalPrice || (unitPrice * (asset.quantity || 1));
     const usefulLife = this.getUsefulLifeYears(asset.category);
@@ -46,10 +47,20 @@ export class DepreciationService {
     }
 
     const salvageValue = totalPrice * 0.1; // 10% residual value
-    const depreciableAmount = totalPrice - salvageValue;
-    const annualDepreciation = depreciableAmount / usefulLife;
-    const accumulatedDepreciation = Math.min(depreciableAmount, annualDepreciation * ageYears);
-    const currentValue = Math.max(salvageValue, totalPrice - accumulatedDepreciation);
+    let accumulatedDepreciation = 0;
+    let currentValue = totalPrice;
+
+    if (method === 'Declining-Balance') {
+      const rate = customRate || (2 / usefulLife); // Double declining balance by default
+      currentValue = Math.max(salvageValue, totalPrice * Math.pow(1 - rate, ageYears));
+      accumulatedDepreciation = totalPrice - currentValue;
+    } else {
+      const depreciableAmount = totalPrice - salvageValue;
+      const annualDepreciation = depreciableAmount / usefulLife;
+      accumulatedDepreciation = Math.min(depreciableAmount, annualDepreciation * ageYears);
+      currentValue = Math.max(salvageValue, totalPrice - accumulatedDepreciation);
+    }
+
     const depreciationPercentage = totalPrice > 0 ? (accumulatedDepreciation / totalPrice) * 100 : 0;
 
     // Warranty status calculation
@@ -81,12 +92,13 @@ export class DepreciationService {
       totalDepreciation: Math.round(accumulatedDepreciation * 100) / 100,
       depreciationPercentage: Math.round(depreciationPercentage * 10) / 10,
       usefulLifeYears: usefulLife,
+      method,
       warrantyStatus,
       daysToWarrantyExpiry
     };
   }
 
-  calculatePortfolioDepreciation(assets: Asset[]): {
+  calculatePortfolioDepreciation(assets: Asset[], method: 'Straight-Line' | 'Declining-Balance' = 'Straight-Line'): {
     totalOriginalValue: number;
     totalCurrentValue: number;
     totalDepreciation: number;
@@ -99,7 +111,7 @@ export class DepreciationService {
     let expiredWarrantyCount = 0;
 
     for (const asset of assets) {
-      const info = this.calculateDepreciation(asset);
+      const info = this.calculateDepreciation(asset, method);
       totalOriginalValue += info.originalPrice;
       totalCurrentValue += info.currentValue;
       if (info.warrantyStatus === 'Expiring Soon') expiringWarrantyCount++;

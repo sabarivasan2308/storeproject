@@ -31,14 +31,15 @@ export class AppwriteService {
   private storage!: Storage;
   private schoolCache: School[] = [];
   private mockSubscribers: Array<{ channels: string[]; callback: (event: any) => void }> = [];
+  private verifiedSchoolScopes: string[] | null = null;
   
   // State Signals
   isUsingMock = signal<boolean>(false);
   currentUser = signal<AppUser | null>(null);
 
-  async getCurrentUser(): Promise<AppUser | null> {
+  async getCurrentUser(forceRefresh = false): Promise<AppUser | null> {
     const user = this.currentUser();
-    if (user) return user;
+    if (user && !forceRefresh) return user;
 
     const storedMock = localStorage.getItem('isUsingMock');
     if (this.isUsingMock() || storedMock === 'true') {
@@ -125,17 +126,69 @@ export class AppwriteService {
     ];
   }
 
-  private enforceSchoolScope(institutionOrPrefix: string): void {
+  private async getVerifiedSchoolPrefixesForScope(): Promise<string[]> {
+    if (this.isUsingMock()) {
+      const user = this.currentUser();
+      if (!user) return [];
+      if (user.role === 'Super Admin') {
+        const schools = await this.getSchools();
+        return schools.map(s => s.prefix);
+      }
+      return [this.getPrefixForInstitution(user.institution)];
+    }
+
+    if (this.verifiedSchoolScopes) {
+      return this.verifiedSchoolScopes;
+    }
+
+    try {
+      const teamsList = await this.teams.list();
+      const teamIds = teamsList.teams.map(t => t.$id);
+
+      if (teamIds.includes('super_admin')) {
+        const schools = await this.getSchools();
+        this.verifiedSchoolScopes = schools.map(s => s.prefix);
+      } else {
+        const prefixes: string[] = [];
+        for (const id of teamIds) {
+          if (id.startsWith('school_')) {
+            prefixes.push(id.replace('school_', ''));
+          }
+        }
+        this.verifiedSchoolScopes = prefixes;
+      }
+      return this.verifiedSchoolScopes;
+    } catch (e) {
+      console.error('Error fetching verified school scopes:', e);
+      this.verifiedSchoolScopes = null;
+      return [];
+    }
+  }
+
+  public resolveSchoolPrefix(schoolNameOrId?: string): string {
+    const target = schoolNameOrId || this.currentUser()?.institution;
+    if (!target) return 'kare';
+    return this.getPrefixForInstitution(target);
+  }
+
+  private async enforceSchoolScope(institutionOrPrefix: string): Promise<void> {
     const user = this.currentUser();
     if (!user) {
       throw new Error('Unauthorized: No active user session.');
     }
-    if (user.role === 'Super Admin') {
+    if (this.isUsingMock()) {
+      if (user.role === 'Super Admin') return;
+      const userPrefix = this.getPrefixForInstitution(user.institution);
+      const targetPrefix = this.getPrefixForInstitution(institutionOrPrefix);
+      if (userPrefix !== targetPrefix) {
+        throw new Error(`Unauthorized: Operation not permitted for institution ${institutionOrPrefix}.`);
+      }
       return;
     }
-    const userPrefix = this.getPrefixForInstitution(user.institution);
+
+    const allowedScopes = await this.getVerifiedSchoolPrefixesForScope();
     const targetPrefix = this.getPrefixForInstitution(institutionOrPrefix);
-    if (userPrefix !== targetPrefix) {
+    if (!allowedScopes.includes(targetPrefix)) {
       throw new Error(`Unauthorized: Operation not permitted for institution ${institutionOrPrefix}.`);
     }
   }
@@ -440,6 +493,7 @@ export class AppwriteService {
       localStorage.removeItem('isUsingMock');
       this.isUsingMock.set(false);
       this.currentUser.set(null);
+      this.verifiedSchoolScopes = null;
       
       if (!storedMock) {
         try {
@@ -1076,7 +1130,7 @@ export class AppwriteService {
     remarks: string;
     items: ProcurementDraftItem[];
   }): Promise<ProcurementBill> {
-    this.enforceSchoolScope(input.schoolName);
+    await this.enforceSchoolScope(input.schoolName);
     if (this.isUsingMock()) {
       const user = this.currentUser();
       const billId = 'BILL-' + Date.now();
@@ -1491,7 +1545,7 @@ export class AppwriteService {
     approvedBy: string;
   }): Promise<void> {
     const assetInst = input.asset.schoolId || input.asset.locationLabel || 'KARE';
-    this.enforceSchoolScope(assetInst);
+    await this.enforceSchoolScope(assetInst);
 
     if (this.isUsingMock()) {
       const locs = MockDatabase.getLocations();
@@ -1499,7 +1553,7 @@ export class AppwriteService {
       if (!nextLocation) {
         throw new Error('Target location was not found.');
       }
-      this.enforceSchoolScope(nextLocation.institution);
+      await this.enforceSchoolScope(nextLocation.institution);
       const user = this.currentUser();
       const updatedAsset: Asset = {
         ...input.asset,
@@ -1542,7 +1596,7 @@ export class AppwriteService {
     if (!nextLocation) {
       throw new Error('Target location was not found.');
     }
-    this.enforceSchoolScope(nextLocation.institution);
+    await this.enforceSchoolScope(nextLocation.institution);
 
     const user = this.currentUser();
     const updatedAsset: Asset = {
@@ -2596,31 +2650,37 @@ export class AppwriteService {
   }
 
   async addMaintenanceRecord(record: Omit<MaintenanceRecord, 'id'>): Promise<MaintenanceRecord> {
+    const prefix = this.resolveSchoolPrefix(record.schoolId);
+    await this.enforceSchoolScope(prefix);
     if (this.isUsingMock()) {
-      return MockDatabase.addMaintenanceRecord(record);
+      return MockDatabase.addMaintenanceRecord({ ...record, schoolId: prefix });
     }
     const id = 'MNT-' + Date.now();
-    const newRecord: MaintenanceRecord = { id, ...record };
+    const newRecord: MaintenanceRecord = { id, ...record, schoolId: prefix };
+    const permissions = this.getPermissionsForPrefix(prefix);
     await this.databases.createDocument(
       APPWRITE_CONFIG.DATABASE_ID,
       APPWRITE_CONFIG.COLLECTIONS.MAINTENANCE,
       id,
-      newRecord
+      newRecord,
+      permissions
     );
     return newRecord;
   }
 
-  async updateMaintenanceRecord(record: MaintenanceRecord): Promise<MaintenanceRecord> {
+  async updateMaintenanceRecord(idOrRecord: string | MaintenanceRecord, data?: Partial<MaintenanceRecord>): Promise<MaintenanceRecord> {
+    const id = typeof idOrRecord === 'string' ? idOrRecord : idOrRecord.id;
+    const updateData = typeof idOrRecord === 'string' ? data! : idOrRecord;
     if (this.isUsingMock()) {
-      return MockDatabase.updateMaintenanceRecord(record);
+      return MockDatabase.updateMaintenanceRecord({ id, ...updateData } as MaintenanceRecord);
     }
     await this.databases.updateDocument(
       APPWRITE_CONFIG.DATABASE_ID,
       APPWRITE_CONFIG.COLLECTIONS.MAINTENANCE,
-      record.id,
-      record
+      id,
+      updateData
     );
-    return record;
+    return { id, ...updateData } as MaintenanceRecord;
   }
 
   async deleteMaintenanceRecord(id: string): Promise<boolean> {
@@ -2669,31 +2729,37 @@ export class AppwriteService {
   }
 
   async addWarrantyRecord(record: Omit<WarrantyRecord, 'id'>): Promise<WarrantyRecord> {
+    const prefix = this.resolveSchoolPrefix(record.schoolId);
+    await this.enforceSchoolScope(prefix);
     if (this.isUsingMock()) {
-      return MockDatabase.addWarrantyRecord(record);
+      return MockDatabase.addWarrantyRecord({ ...record, schoolId: prefix });
     }
     const id = 'WRN-' + Date.now();
-    const newRecord: WarrantyRecord = { id, ...record };
+    const newRecord: WarrantyRecord = { id, ...record, schoolId: prefix };
+    const permissions = this.getPermissionsForPrefix(prefix);
     await this.databases.createDocument(
       APPWRITE_CONFIG.DATABASE_ID,
       APPWRITE_CONFIG.COLLECTIONS.WARRANTY,
       id,
-      newRecord
+      newRecord,
+      permissions
     );
     return newRecord;
   }
 
-  async updateWarrantyRecord(record: WarrantyRecord): Promise<WarrantyRecord> {
+  async updateWarrantyRecord(idOrRecord: string | WarrantyRecord, data?: Partial<WarrantyRecord>): Promise<WarrantyRecord> {
+    const id = typeof idOrRecord === 'string' ? idOrRecord : idOrRecord.id;
+    const updateData = typeof idOrRecord === 'string' ? data! : idOrRecord;
     if (this.isUsingMock()) {
-      return MockDatabase.updateWarrantyRecord(record);
+      return MockDatabase.updateWarrantyRecord({ id, ...updateData } as WarrantyRecord);
     }
     await this.databases.updateDocument(
       APPWRITE_CONFIG.DATABASE_ID,
       APPWRITE_CONFIG.COLLECTIONS.WARRANTY,
-      record.id,
-      record
+      id,
+      updateData
     );
-    return record;
+    return { id, ...updateData } as WarrantyRecord;
   }
 
   async deleteWarrantyRecord(id: string): Promise<boolean> {

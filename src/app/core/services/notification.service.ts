@@ -84,4 +84,20 @@ export class NotificationService {
   clearAll(): void {
     this.notifications.set([]);
   }
+
+  success(message: string, title = 'Success'): void {
+    this.showToast(title, message, 'success');
+  }
+
+  error(message: string, title = 'Error'): void {
+    this.showToast(title, message, 'danger');
+  }
+
+  warning(message: string, title = 'Warning'): void {
+    this.showToast(title, message, 'warning');
+  }
+
+  info(message: string, title = 'Information'): void {
+    this.showToast(title, message, 'info');
+  }
 }

@@ -5,7 +5,7 @@ import { AppwriteService } from '../services/appwrite.service';
 export const superAdminGuard: CanActivateFn = async () => {
   const service = inject(AppwriteService);
   const router = inject(Router);
-  const user = await service.getCurrentUser();
+  const user = await service.getCurrentUser(true);
 
   if (user && user.role === 'Super Admin') {
     return true;
@@ -17,7 +17,7 @@ export const superAdminGuard: CanActivateFn = async () => {
 export const schoolAdminGuard: CanActivateFn = async () => {
   const service = inject(AppwriteService);
   const router = inject(Router);
-  const user = await service.getCurrentUser();
+  const user = await service.getCurrentUser(true);
 
   if (user && user.role === 'School Admin') {
     return true;
@@ -29,7 +29,7 @@ export const schoolAdminGuard: CanActivateFn = async () => {
 export const loginGuard: CanActivateFn = async () => {
   const service = inject(AppwriteService);
   const router = inject(Router);
-  const user = await service.getCurrentUser();
+  const user = await service.getCurrentUser(true);
 
   if (user) {
     if (user.role === 'Super Admin') {

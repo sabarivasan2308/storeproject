@@ -7,13 +7,16 @@ import { ExportService } from '../../core/services/export.service';
 import { DepreciationService } from '../../core/services/depreciation.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ThemeService } from '../../core/services/theme.service';
-import { Asset, Location, VerificationRequest, MasterOption, Vendor, AssetTransfer } from '../../core/models/types';
+import { Asset, Location, VerificationRequest, MasterOption, Vendor, AssetTransfer, MaintenanceRecord, WarrantyRecord, AuditLog } from '../../core/models/types';
 import { QRScannerSimComponent } from '../shared/components/qr-scanner-sim.component';
 import { NotificationCenterComponent } from '../shared/components/notification-center.component';
 import { PaginationComponent } from '../shared/components/pagination.component';
 import { StatCardComponent } from '../shared/components/stat-card.component';
 import { AssetDrawerComponent } from '../shared/components/asset-drawer.component';
 import { AssetFormComponent } from '../shared/components/asset-form.component';
+import { MaintenanceManagementComponent } from '../shared/components/maintenance-management.component';
+import { WarrantyManagementComponent } from '../shared/components/warranty-management.component';
+import { ReportsPanelComponent } from '../shared/components/reports-panel.component';
 
 @Component({
   selector: 'app-school-admin',
@@ -25,7 +28,10 @@ import { AssetFormComponent } from '../shared/components/asset-form.component';
     NotificationCenterComponent,
     PaginationComponent,
     AssetDrawerComponent,
-    AssetFormComponent
+    AssetFormComponent,
+    MaintenanceManagementComponent,
+    WarrantyManagementComponent,
+    ReportsPanelComponent
   ],
   template: `
     <div class="dashboard-container">
@@ -44,6 +50,12 @@ import { AssetFormComponent } from '../shared/components/asset-form.component';
           </button>
           <button class="nav-link" [class.active]="activeTab() === 'assets'" (click)="setTab('assets')">
             Assets Inventory
+          </button>
+          <button class="nav-link" [class.active]="activeTab() === 'maintenance'" (click)="setTab('maintenance')">
+            Maintenance & Service
+          </button>
+          <button class="nav-link" [class.active]="activeTab() === 'warranty'" (click)="setTab('warranty')">
+            Warranty & AMC
           </button>
           <button class="nav-link" [class.active]="activeTab() === 'verification'" (click)="setTab('verification')">
             Stock Verification
@@ -485,75 +497,41 @@ import { AssetFormComponent } from '../shared/components/asset-form.component';
           </div>
         }
 
+        <!-- MAINTENANCE MANAGEMENT -->
+        @if (activeTab() === 'maintenance') {
+          <div class="tab-content fade-in">
+            <app-maintenance-management
+              [records]="maintenanceRecords()"
+              [assets]="assets()"
+              [isSuperAdmin]="false"
+              (saveRecord)="onSaveMaintenanceRecord($event)"
+              (deleteRecord)="onDeleteMaintenanceRecord($event)"
+            ></app-maintenance-management>
+          </div>
+        }
+
+        <!-- WARRANTY & AMC MANAGEMENT -->
+        @if (activeTab() === 'warranty') {
+          <div class="tab-content fade-in">
+            <app-warranty-management
+              [records]="warrantyRecords()"
+              [assets]="assets()"
+              [isSuperAdmin]="false"
+              (saveRecord)="onSaveWarrantyRecord($event)"
+              (deleteRecord)="onDeleteWarrantyRecord($event)"
+            ></app-warranty-management>
+          </div>
+        }
+
         <!-- 5. REPORTS GENERATOR -->
         @if (activeTab() === 'reports') {
           <div class="tab-content fade-in">
-            <h1 class="display-header page-heading">{{ institutionName() }} Inventory Reports</h1>
-
-            <div class="glass-panel filter-bar">
-              <div class="filter-group">
-                <label class="form-label">Report Type</label>
-                <select class="form-input" [(ngModel)]="reportType">
-                  <option value="summary">Full Inventory Details</option>
-                  <option value="damaged">Service & Condemned list</option>
-                  <option value="missing">Missing Assets list</option>
-                </select>
-              </div>
-              <button class="btn btn-primary" (click)="printReport()">
-                Print / Save PDF Report 🖨️
-              </button>
-            </div>
-
-            <!-- Preview styled for paper print -->
-            <div class="glass-panel print-preview-area" id="print-area">
-              <div class="report-print-header">
-                <h2>{{ institutionName() }} Inventory Audit</h2>
-                <h3>{{ reportTitle() }}</h3>
-                <p>Generated on: {{ currentDateTime() }} | Scope: Campus Administration Area</p>
-              </div>
-
-              <div class="table-container">
-                <table class="glass-table">
-                  <thead>
-                    <tr>
-                      <th>Asset ID</th>
-                      <th>Asset Name</th>
-                      <th>Category</th>
-                      <th>Brand / Model</th>
-                      <th>Quantity</th>
-                      <th>Total Value</th>
-                      <th>Purchase Order</th>
-                      <th>Billing Date</th>
-                      <th>Location</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (asset of reportAssets(); track asset.id) {
-                      <tr>
-                        <td><code>{{ asset.id }}</code></td>
-                        <td>{{ asset.name }}</td>
-                        <td>{{ asset.category }}</td>
-                        <td>{{ asset.brand }} / {{ asset.model }}</td>
-                        <td>{{ asset.quantity }}</td>
-                        <td>₹{{ asset.totalPrice | number }}</td>
-                        <td><code>{{ asset.purchaseOrder || '-' }}</code></td>
-                        <td>
-                          {{ asset.billDate || '-' }}
-                          @if (asset.billNumber) {
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-                              No: <code>{{ asset.billNumber }}</code>
-                            </div>
-                          }
-                        </td>
-                        <td>{{ asset.locationText?.split(' -> ')?.slice(1)?.join(' -> ') }}</td>
-                        <td>{{ asset.status }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <app-reports-panel
+              [assets]="assets()"
+              [maintenanceRecords]="maintenanceRecords()"
+              [warrantyRecords]="warrantyRecords()"
+              [auditLogs]="auditLogs()"
+            ></app-reports-panel>
           </div>
         }
       </main>
@@ -1067,6 +1045,9 @@ export class SchoolAdminComponent implements OnInit, OnDestroy {
   assets = signal<Asset[]>([]);
   locations = signal<Location[]>([]);
   requests = signal<VerificationRequest[]>([]);
+  maintenanceRecords = signal<MaintenanceRecord[]>([]);
+  warrantyRecords = signal<WarrantyRecord[]>([]);
+  auditLogs = signal<AuditLog[]>([]);
   masterCategories = signal<MasterOption[]>([]);
   masterStatuses = signal<MasterOption[]>([]);
   vendors = signal<Vendor[]>([]);
@@ -1233,13 +1214,16 @@ export class SchoolAdminComponent implements OnInit, OnDestroy {
 
   async loadData() {
     try {
-      const [categoryData, statusData, vendorData, assetsData, locationsData, requestsData] = await Promise.all([
+      const [categoryData, statusData, vendorData, assetsData, locationsData, requestsData, maintenanceData, warrantyData, logsData] = await Promise.all([
         this.appwriteService.getCategories(),
         this.appwriteService.getStatuses(),
         this.appwriteService.getVendors(),
         this.appwriteService.getAssets(),
         this.appwriteService.getLocations(),
-        this.appwriteService.getRequests()
+        this.appwriteService.getRequests(),
+        this.appwriteService.getMaintenanceRecords(),
+        this.appwriteService.getWarrantyRecords(),
+        this.appwriteService.getAuditLogs()
       ]);
       this.masterCategories.set(categoryData);
       this.masterStatuses.set(statusData);
@@ -1247,11 +1231,73 @@ export class SchoolAdminComponent implements OnInit, OnDestroy {
       
       // ISOLATION: filter records belonging to their assigned institution
       const instName = this.institutionName();
-      this.assets.set(assetsData.filter(a => a.locationText?.startsWith(instName)));
+      const schoolAssets = assetsData.filter(a => a.locationText?.startsWith(instName));
+      const assetIds = new Set(schoolAssets.map(a => a.id));
+
+      this.assets.set(schoolAssets);
       this.locations.set(locationsData.filter(l => l.institution === instName));
       this.requests.set(requestsData.filter(r => r.institution === instName));
+      this.maintenanceRecords.set(maintenanceData.filter(m => assetIds.has(m.assetId)));
+      this.warrantyRecords.set(warrantyData.filter(w => assetIds.has(w.assetId)));
+      this.auditLogs.set(logsData);
     } catch (e) {
       console.error('Error fetching school admin data:', e);
+    }
+  }
+
+  async onSaveMaintenanceRecord(rec: Partial<MaintenanceRecord>) {
+    try {
+      if (rec.id) {
+        await this.appwriteService.updateMaintenanceRecord(rec.id, rec);
+        this.notificationService.success('Maintenance record updated successfully');
+      } else {
+        await this.appwriteService.addMaintenanceRecord(rec as any);
+        this.notificationService.success('Maintenance record scheduled successfully');
+      }
+      await this.loadData();
+    } catch (e) {
+      console.error('Error saving maintenance record:', e);
+      this.notificationService.error('Failed to save maintenance record');
+    }
+  }
+
+  async onDeleteMaintenanceRecord(id: string) {
+    if (!confirm('Are you sure you want to delete this maintenance record?')) return;
+    try {
+      await this.appwriteService.deleteMaintenanceRecord(id);
+      this.notificationService.success('Maintenance record deleted');
+      await this.loadData();
+    } catch (e) {
+      console.error('Error deleting maintenance record:', e);
+      this.notificationService.error('Failed to delete maintenance record');
+    }
+  }
+
+  async onSaveWarrantyRecord(rec: Partial<WarrantyRecord>) {
+    try {
+      if (rec.id) {
+        await this.appwriteService.updateWarrantyRecord(rec.id, rec);
+        this.notificationService.success('Warranty record updated successfully');
+      } else {
+        await this.appwriteService.addWarrantyRecord(rec as any);
+        this.notificationService.success('Warranty record added successfully');
+      }
+      await this.loadData();
+    } catch (e) {
+      console.error('Error saving warranty record:', e);
+      this.notificationService.error('Failed to save warranty record');
+    }
+  }
+
+  async onDeleteWarrantyRecord(id: string) {
+    if (!confirm('Are you sure you want to delete this warranty record?')) return;
+    try {
+      await this.appwriteService.deleteWarrantyRecord(id);
+      this.notificationService.success('Warranty record deleted');
+      await this.loadData();
+    } catch (e) {
+      console.error('Error deleting warranty record:', e);
+      this.notificationService.error('Failed to delete warranty record');
     }
   }
 

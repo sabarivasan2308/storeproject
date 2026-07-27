@@ -487,6 +487,37 @@ const globalSchemas = {
     ['string', 'userName', 255, true],
     ['string', 'action', 255, true],
     ['string', 'details', 1000, true]
+  ],
+  maintenance: [
+    ['string', 'assetId', 255, true],
+    ['string', 'assetName', 255, true],
+    ['string', 'serviceDate', 255, true],
+    ['string', 'technicianName', 255, false],
+    ['string', 'technicianContact', 255, false],
+    ['string', 'serviceType', 255, false],
+    ['integer', 'cost', null, false],
+    ['string', 'description', 1000, false],
+    ['string', 'status', 255, false],
+    ['string', 'partsReplaced', 1000, false],
+    ['string', 'nextDueDate', 255, false],
+    ['string', 'schoolId', 255, true],
+    ['string', 'createdBy', 255, false],
+    ['string', 'createdAt', 255, false]
+  ],
+  warranty: [
+    ['string', 'assetId', 255, true],
+    ['string', 'assetName', 255, true],
+    ['string', 'provider', 255, false],
+    ['string', 'contactPerson', 255, false],
+    ['string', 'phone', 255, false],
+    ['string', 'email', 255, false],
+    ['string', 'startDate', 255, false],
+    ['string', 'expiryDate', 255, false],
+    ['integer', 'amcCost', null, false],
+    ['string', 'terms', 1000, false],
+    ['string', 'schoolId', 255, true],
+    ['boolean', 'renewalAlertSent', null, false],
+    ['string', 'createdAt', 255, false]
   ]
 };
 
@@ -522,6 +553,14 @@ const collectionIndexes = {
   procurement_audit_logs: [
     ['idx_procurement_bill', 'key', ['billId']],
     ['idx_procurement_date', 'key', ['date']]
+  ],
+  maintenance: [
+    ['idx_mnt_school', 'key', ['schoolId']],
+    ['idx_mnt_asset', 'key', ['assetId']]
+  ],
+  warranty: [
+    ['idx_wrn_school', 'key', ['schoolId']],
+    ['idx_wrn_asset', 'key', ['assetId']]
   ],
   assets: [
     ['idx_asset_bill', 'key', ['billId']],
@@ -564,16 +603,42 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function ensureCollection(collectionId, name = collectionId) {
+function detectSchoolPrefix(documentId, data) {
+  if (!data) return null;
+  if (data.schoolId) return data.schoolId.toLowerCase();
+  if (data.schoolPrefix) return data.schoolPrefix.toLowerCase();
+  if (data.institution) {
+    const s = schoolSeeds.find(s => s.name.toLowerCase() === data.institution.toLowerCase() || s.code.toLowerCase() === data.institution.toLowerCase());
+    if (s) return s.prefix;
+  }
+  const strToSearch = `${documentId} ${data.billId || ''} ${data.assetId || ''} ${data.schoolName || ''}`.toLowerCase();
+  for (const school of schoolSeeds) {
+    if (strToSearch.includes(school.prefix)) {
+      return school.prefix;
+    }
+  }
+  return null;
+}
+
+async function ensureCollection(collectionId, name = collectionId, customPermissions = permissions, documentSecurity = false) {
   const result = await request('POST', `/databases/${databaseId}/collections`, {
     collectionId,
     name,
-    permissions,
-    documentSecurity: false,
+    permissions: customPermissions,
+    documentSecurity,
     enabled: true
   });
   if (result.ok) return 'created';
-  if (result.status === 409) return 'exists';
+  if (result.status === 409) {
+    const updateResult = await request('PUT', `/databases/${databaseId}/collections/${collectionId}`, {
+      name,
+      permissions: customPermissions,
+      documentSecurity,
+      enabled: true
+    });
+    if (updateResult.ok) return 'aligned';
+    throw new Error(`Update Collection ${collectionId}: ${updateResult.status} ${JSON.stringify(updateResult.data)}`);
+  }
   throw new Error(`Collection ${collectionId}: ${result.status} ${JSON.stringify(result.data)}`);
 }
 
@@ -614,17 +679,40 @@ async function ensureIndex(collectionId, index) {
   throw new Error(`Index ${collectionId}.${key}: ${result.status} ${JSON.stringify(result.data)}`);
 }
 
-async function ensureDocument(collectionId, documentId, data) {
+async function ensureDocument(collectionId, documentId, data, customPermissions = null) {
+  let docPermissions = customPermissions;
+  if (!docPermissions) {
+    const schoolPrefix = detectSchoolPrefix(documentId, data);
+    if (collectionId === 'users') {
+      docPermissions = [
+        'read("team:super_admin")', 'update("team:super_admin")', 'delete("team:super_admin")',
+        `read("user:${documentId}")`, `update("user:${documentId}")`
+      ];
+    } else if (schoolPrefix) {
+      docPermissions = [
+        'read("team:super_admin")', 'update("team:super_admin")', 'delete("team:super_admin")',
+        `read("team:school_${schoolPrefix}")`, `update("team:school_${schoolPrefix}")`, `delete("team:school_${schoolPrefix}")`
+      ];
+    } else {
+      docPermissions = [
+        'read("team:super_admin")', 'update("team:super_admin")', 'delete("team:super_admin")'
+      ];
+    }
+  }
+
   const getResult = await request('GET', `/databases/${databaseId}/collections/${collectionId}/documents/${documentId}`);
   if (getResult.ok) {
-    const updateResult = await request('PATCH', `/databases/${databaseId}/collections/${collectionId}/documents/${documentId}`, { data });
+    const updateResult = await request('PATCH', `/databases/${databaseId}/collections/${collectionId}/documents/${documentId}`, {
+      data,
+      permissions: docPermissions
+    });
     if (!updateResult.ok) throw new Error(`Update ${collectionId}.${documentId}: ${updateResult.status} ${JSON.stringify(updateResult.data)}`);
     return 'updated';
   }
   const createResult = await request('POST', `/databases/${databaseId}/collections/${collectionId}/documents`, {
     documentId,
     data,
-    permissions: documentPermissions
+    permissions: docPermissions
   });
   if (createResult.ok) return 'created';
   if (createResult.status === 409) return 'exists';
@@ -737,9 +825,13 @@ async function main() {
   for (const school of schoolSeeds) {
     for (const [kind, schema] of Object.entries(collectionSchemas)) {
       const collectionId = `${school.prefix}_${kind}`;
-      const collectionStatus = await ensureCollection(collectionId);
-      if (collectionStatus === 'created') {
-        summary.collectionsCreated.push(collectionId);
+      const schoolPermissions = [
+        'read("team:super_admin")', 'create("team:super_admin")', 'update("team:super_admin")', 'delete("team:super_admin")',
+        `read("team:school_${school.prefix}")`, `create("team:school_${school.prefix}")`, `update("team:school_${school.prefix}")`, `delete("team:school_${school.prefix}")`
+      ];
+      const collectionStatus = await ensureCollection(collectionId, collectionId, schoolPermissions, false);
+      if (collectionStatus === 'created' || collectionStatus === 'aligned') {
+        summary.collectionsCreated.push(`${collectionId}:${collectionStatus}`);
         await sleep(500);
       }
       for (const attribute of schema) {
@@ -753,9 +845,20 @@ async function main() {
   }
 
   for (const [collectionId, schema] of Object.entries(masterSchemas)) {
-    const collectionStatus = await ensureCollection(collectionId);
-    if (collectionStatus === 'created') {
-      summary.collectionsCreated.push(collectionId);
+    const isUsersCollection = collectionId === 'users';
+    const masterPermissions = isUsersCollection
+      ? [
+          'create("users")',
+          'read("team:super_admin")', 'create("team:super_admin")', 'update("team:super_admin")', 'delete("team:super_admin")'
+        ]
+      : [
+          'read("users")',
+          'read("team:super_admin")', 'create("team:super_admin")', 'update("team:super_admin")', 'delete("team:super_admin")'
+        ];
+    const docSec = isUsersCollection;
+    const collectionStatus = await ensureCollection(collectionId, collectionId, masterPermissions, docSec);
+    if (collectionStatus === 'created' || collectionStatus === 'aligned') {
+      summary.collectionsCreated.push(`${collectionId}:${collectionStatus}`);
       await sleep(500);
     }
     for (const attribute of schema) {
@@ -768,9 +871,13 @@ async function main() {
   }
 
   for (const [collectionId, schema] of Object.entries(globalSchemas)) {
-    const collectionStatus = await ensureCollection(collectionId);
-    if (collectionStatus === 'created') {
-      summary.collectionsCreated.push(collectionId);
+    const globalPermissions = [
+      'create("users")',
+      'read("team:super_admin")', 'create("team:super_admin")', 'update("team:super_admin")', 'delete("team:super_admin")'
+    ];
+    const collectionStatus = await ensureCollection(collectionId, collectionId, globalPermissions, true);
+    if (collectionStatus === 'created' || collectionStatus === 'aligned') {
+      summary.collectionsCreated.push(`${collectionId}:${collectionStatus}`);
       await sleep(500);
     }
     for (const attribute of schema) {

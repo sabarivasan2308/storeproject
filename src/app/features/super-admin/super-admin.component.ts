@@ -13,6 +13,9 @@ import { PaginationComponent } from '../shared/components/pagination.component';
 import { StatCardComponent } from '../shared/components/stat-card.component';
 import { AssetDrawerComponent } from '../shared/components/asset-drawer.component';
 import { AssetFormComponent } from '../shared/components/asset-form.component';
+import { MaintenanceManagementComponent } from '../shared/components/maintenance-management.component';
+import { WarrantyManagementComponent } from '../shared/components/warranty-management.component';
+import { ReportsPanelComponent } from '../shared/components/reports-panel.component';
 import {
   Asset,
   Location,
@@ -25,7 +28,9 @@ import {
   ProcurementDraftItem,
   ProcurementBillItem,
   ProductMaster,
-  AssetTransfer
+  AssetTransfer,
+  MaintenanceRecord,
+  WarrantyRecord
 } from '../../core/models/types';
 
 @Component({
@@ -38,7 +43,10 @@ import {
     NotificationCenterComponent,
     PaginationComponent,
     AssetDrawerComponent,
-    AssetFormComponent
+    AssetFormComponent,
+    MaintenanceManagementComponent,
+    WarrantyManagementComponent,
+    ReportsPanelComponent
   ],
   template: `
     <div class="dashboard-container">
@@ -57,6 +65,12 @@ import {
           </button>
           <button class="nav-link" [class.active]="activeTab() === 'assets'" (click)="setTab('assets')">
             Asset Inventory
+          </button>
+          <button class="nav-link" [class.active]="activeTab() === 'maintenance'" (click)="setTab('maintenance')">
+            Maintenance & Service
+          </button>
+          <button class="nav-link" [class.active]="activeTab() === 'warranty'" (click)="setTab('warranty')">
+            Warranty & AMC
           </button>
           <button class="nav-link" [class.active]="activeTab() === 'procurement'" (click)="setTab('procurement')">
             Procurement Entry
@@ -1062,140 +1076,41 @@ import {
           </div>
         }
 
-        <!-- 5. REPORTS GENERATOR -->
+        <!-- MAINTENANCE MANAGEMENT -->
+        @if (activeTab() === 'maintenance') {
+          <div class="tab-content fade-in">
+            <app-maintenance-management
+              [records]="maintenanceRecords()"
+              [assets]="assets()"
+              [isSuperAdmin]="true"
+              (saveRecord)="onSaveMaintenanceRecord($event)"
+              (deleteRecord)="onDeleteMaintenanceRecord($event)"
+            ></app-maintenance-management>
+          </div>
+        }
+
+        <!-- WARRANTY & AMC MANAGEMENT -->
+        @if (activeTab() === 'warranty') {
+          <div class="tab-content fade-in">
+            <app-warranty-management
+              [records]="warrantyRecords()"
+              [assets]="assets()"
+              [isSuperAdmin]="true"
+              (saveRecord)="onSaveWarrantyRecord($event)"
+              (deleteRecord)="onDeleteWarrantyRecord($event)"
+            ></app-warranty-management>
+          </div>
+        }
+
+        <!-- EXECUTIVE REPORTS CENTER -->
         @if (activeTab() === 'reports') {
           <div class="tab-content fade-in">
-            <h1 class="display-header page-heading">Reports Center</h1>
-
-            <div class="glass-panel filter-bar">
-              <div class="filter-group">
-                <label class="form-label">Report Type</label>
-                <select class="form-input" [(ngModel)]="reportType">
-                  <option value="summary">Institution-wise Inventory Summary</option>
-                  <option value="damaged">Service & Condemned Assets Report</option>
-                  <option value="missing">Missing Assets Report</option>
-                  <option value="all">Full Inventory Audit Details</option>
-                </select>
-              </div>
-              <button class="btn btn-primary" (click)="generateReport()">
-                Print / Export Report 🖨️
-              </button>
-            </div>
-
-            <!-- Report Preview -->
-            <div class="glass-panel print-preview-area" id="print-area">
-              <div class="report-print-header">
-                <h2>Kalasalingam Academy of Research and Education (KARE)</h2>
-                <h3>{{ reportTitle() }}</h3>
-                <p>Generated on: {{ currentDateTime() }} | Scope: Global University Authority</p>
-              </div>
-
-              <div class="table-container">
-                <table class="glass-table">
-                  @if (reportType === 'summary') {
-                    <thead>
-                      <tr>
-                        <th>Institution Name</th>
-                        <th>Total Assets</th>
-                        <th>Total Inventory Value</th>
-                        <th>Under Service</th>
-                        <th>Damaged Items</th>
-                        <th>Missing Items</th>
-                        <th>Condemned</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (inst of institutionSummaries(); track inst.name) {
-                        <tr>
-                          <td><strong>{{ inst.name }}</strong></td>
-                          <td>{{ inst.count }}</td>
-                          <td>₹{{ inst.value | number }}</td>
-                          <td>{{ inst.underService }}</td>
-                          <td>{{ inst.damaged }}</td>
-                          <td>{{ inst.missing }}</td>
-                          <td>{{ inst.condemned }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  } @else if (reportType === 'damaged' || reportType === 'missing') {
-                    <thead>
-                      <tr>
-                        <th>Asset ID</th>
-                        <th>Asset Name</th>
-                        <th>Institution</th>
-                        <th>Category</th>
-                        <th>Brand/Model</th>
-                        <th>Quantity</th>
-                        <th>Unit Price</th>
-                        <th>Total Value</th>
-                        <th>Purchase Order</th>
-                        <th>Billing Date</th>
-                        <th>Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (asset of reportAssets(); track asset.id) {
-                        <tr>
-                          <td><code>{{ asset.id }}</code></td>
-                          <td>
-                            {{ asset.name }}
-                            @if (asset.billNumber) {
-                              <div style="font-size: 0.75rem; color: #64748b;">
-                                Bill No: {{ asset.billNumber }}
-                              </div>
-                            }
-                          </td>
-                          <td>{{ asset.locationText?.split(' -> ')?.shift() }}</td>
-                          <td>{{ asset.category }}</td>
-                          <td>{{ asset.brand }}/{{ asset.model }}</td>
-                          <td>{{ asset.quantity }}</td>
-                          <td>₹{{ asset.unitPrice | number }}</td>
-                          <td>₹{{ asset.totalPrice | number }}</td>
-                          <td><code>{{ asset.purchaseOrder || '-' }}</code></td>
-                          <td>{{ asset.billDate || '-' }}</td>
-                          <td>{{ asset.remarks }}</td>
-                        </tr>
-                      } @empty {
-                        <tr>
-                          <td colspan="11" class="text-center">No assets matching report filters.</td>
-                        </tr>
-                      }
-                    </tbody>
-                  } @else {
-                    <thead>
-                      <tr>
-                        <th>Asset ID</th>
-                        <th>Asset Name</th>
-                        <th>Institution</th>
-                        <th>Category</th>
-                        <th>Qty</th>
-                        <th>Total Value</th>
-                        <th>Purchase Order</th>
-                        <th>Billing Date</th>
-                        <th>Status</th>
-                        <th>Location Details</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (asset of assets(); track asset.id) {
-                        <tr>
-                          <td><code>{{ asset.id }}</code></td>
-                          <td>{{ asset.name }}</td>
-                          <td>{{ asset.locationText?.split(' -> ')?.shift() }}</td>
-                          <td>{{ asset.category }}</td>
-                          <td>{{ asset.quantity }}</td>
-                          <td>₹{{ asset.totalPrice | number }}</td>
-                          <td><code>{{ asset.purchaseOrder || '-' }}</code></td>
-                          <td>{{ asset.billDate || '-' }}</td>
-                          <td>{{ asset.status }}</td>
-                          <td>{{ asset.locationText }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  }
-                </table>
-              </div>
-            </div>
+            <app-reports-panel
+              [assets]="assets()"
+              [maintenanceRecords]="maintenanceRecords()"
+              [warrantyRecords]="warrantyRecords()"
+              [auditLogs]="auditLogs()"
+            ></app-reports-panel>
           </div>
         }
       </main>
@@ -2202,6 +2117,8 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
     });
   });
   auditLogs = signal<AuditLog[]>([]);
+  maintenanceRecords = signal<MaintenanceRecord[]>([]);
+  warrantyRecords = signal<WarrantyRecord[]>([]);
   schools = signal<School[]>([]);
   masterCategories = signal<MasterOption[]>([]);
   masterStatuses = signal<MasterOption[]>([]);
@@ -2488,7 +2405,7 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
 
   async loadData() {
     try {
-      const [schoolsData, categoryData, statusData, vendorData, assetsData, locationsData, requestsData, logsData, billsData, productsData] = await Promise.all([
+      const [schoolsData, categoryData, statusData, vendorData, assetsData, locationsData, requestsData, logsData, billsData, productsData, maintenanceData, warrantyData] = await Promise.all([
         this.appwriteService.getSchools(),
         this.appwriteService.getCategories(),
         this.appwriteService.getStatuses(),
@@ -2498,7 +2415,9 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
         this.appwriteService.getRequests(),
         this.appwriteService.getAuditLogs(),
         this.appwriteService.getBills(),
-        this.appwriteService.getProducts()
+        this.appwriteService.getProducts(),
+        this.appwriteService.getMaintenanceRecords(),
+        this.appwriteService.getWarrantyRecords()
       ]);
       this.schools.set(schoolsData);
       this.masterCategories.set(categoryData);
@@ -2510,8 +2429,66 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
       this.auditLogs.set(logsData);
       this.bills.set(billsData);
       this.products.set(productsData);
+      this.maintenanceRecords.set(maintenanceData);
+      this.warrantyRecords.set(warrantyData);
     } catch (e) {
       console.error('Error fetching dashboard data:', e);
+    }
+  }
+
+  async onSaveMaintenanceRecord(rec: Partial<MaintenanceRecord>) {
+    try {
+      if (rec.id) {
+        await this.appwriteService.updateMaintenanceRecord(rec.id, rec);
+        this.notificationService.success('Maintenance record updated successfully');
+      } else {
+        await this.appwriteService.addMaintenanceRecord(rec as any);
+        this.notificationService.success('Maintenance record scheduled successfully');
+      }
+      await this.loadData();
+    } catch (e) {
+      console.error('Error saving maintenance record:', e);
+      this.notificationService.error('Failed to save maintenance record');
+    }
+  }
+
+  async onDeleteMaintenanceRecord(id: string) {
+    if (!confirm('Are you sure you want to delete this maintenance record?')) return;
+    try {
+      await this.appwriteService.deleteMaintenanceRecord(id);
+      this.notificationService.success('Maintenance record deleted');
+      await this.loadData();
+    } catch (e) {
+      console.error('Error deleting maintenance record:', e);
+      this.notificationService.error('Failed to delete maintenance record');
+    }
+  }
+
+  async onSaveWarrantyRecord(rec: Partial<WarrantyRecord>) {
+    try {
+      if (rec.id) {
+        await this.appwriteService.updateWarrantyRecord(rec.id, rec);
+        this.notificationService.success('Warranty record updated successfully');
+      } else {
+        await this.appwriteService.addWarrantyRecord(rec as any);
+        this.notificationService.success('Warranty record added successfully');
+      }
+      await this.loadData();
+    } catch (e) {
+      console.error('Error saving warranty record:', e);
+      this.notificationService.error('Failed to save warranty record');
+    }
+  }
+
+  async onDeleteWarrantyRecord(id: string) {
+    if (!confirm('Are you sure you want to delete this warranty record?')) return;
+    try {
+      await this.appwriteService.deleteWarrantyRecord(id);
+      this.notificationService.success('Warranty record deleted');
+      await this.loadData();
+    } catch (e) {
+      console.error('Error deleting warranty record:', e);
+      this.notificationService.error('Failed to delete warranty record');
     }
   }
 
