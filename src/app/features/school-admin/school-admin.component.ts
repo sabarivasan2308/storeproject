@@ -678,6 +678,7 @@ import { ReportsPanelComponent } from '../shared/components/reports-panel.compon
       flex-direction: column;
       gap: 8px;
       flex-grow: 1;
+      overflow-y: auto;
     }
     .nav-link {
       display: flex;
